@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from .models import Base
 
 
+
 DB_DIR = Path(__file__).resolve().parent.parent / "data"
 DB_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = DB_DIR / "app.db"

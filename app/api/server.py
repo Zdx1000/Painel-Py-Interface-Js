@@ -107,6 +107,7 @@ class ApiHandler(BaseHTTPRequestHandler):
         return _json_response(self, 404, {"error": "not found"})
 
 
+
 class ApiServer:
     def __init__(self, host: str = "127.0.0.1", port: int = 8765) -> None:
         self._server = ThreadingHTTPServer((host, port), ApiHandler)

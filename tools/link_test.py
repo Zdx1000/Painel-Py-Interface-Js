@@ -35,3 +35,4 @@ ok = met_repo.delete(m.id)
 print("DELETED", ok)
 items_after = veh_repo.list_by_metrica(m.id)
 print("REMAIN", len(items_after))
+

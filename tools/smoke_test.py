@@ -25,3 +25,4 @@ if __name__ == "__main__":
     )
     print("INSERTED", r.id)
     print("COUNT", len(repo.list()))
+

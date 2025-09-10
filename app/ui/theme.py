@@ -106,4 +106,5 @@ QWidget#appHeader {
 }
 """
 
+
 __all__ = ["DARK_QSS"]

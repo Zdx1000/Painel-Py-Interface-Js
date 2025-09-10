@@ -13,6 +13,7 @@ async function fetchMetricas() {
 	return res.json();
 }
 
+
 function renderTable(items) {
 	const tbody = document.querySelector("#tbl tbody");
 	tbody.innerHTML = "";

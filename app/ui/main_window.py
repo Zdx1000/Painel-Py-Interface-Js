@@ -13,6 +13,7 @@ from .theme import DARK_QSS
 from ..api.server import ApiServer
 
 
+
 class MetricaTableModel(QtCore.QAbstractTableModel):
     HEADERS = [
         "ID",

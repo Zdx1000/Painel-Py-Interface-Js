@@ -49,3 +49,4 @@ O banco SQLite será criado automaticamente em `app/data/app.db` no primeiro uso
 - Edição inline e exclusão via tabela
 - Filtros por período/categoria
 >>>>>>> ec7103b (Start main Painel-Py-Interface-Js)
+

@@ -34,6 +34,7 @@ class Metrica(Base):
         )
 
 
+
 class VeiculoPendente(Base):
     __tablename__ = "veiculos_pendentes"
 
