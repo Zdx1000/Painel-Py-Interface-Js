@@ -7,7 +7,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from ..db.database import init_db, get_session
 from ..db.repository import MetricaRepository
 from .veiculos_dialog import VeiculosDialog
-from ..db.repository import VeiculoPendenteRepository
+from ..db.repository import VeiculoPendenteRepository, VeiculoDescargaC3Repository
 from pydantic import BaseModel, field_validator, ValidationError
 from .theme import DARK_QSS
 from ..api.server import ApiServer
@@ -19,8 +19,8 @@ class MetricaTableModel(QtCore.QAbstractTableModel):
         "ID",
         "Paletes Agendados",
         "Paletes Produzidos",
-        "Total Veículos",
-        "Veículos Finalizados",
+        "Total de fichas",
+        "Fichas finalizadas",
         "Descargas (C3)",
         "Carregamentos (C3)",
         "Veículos Pendentes",
@@ -108,13 +108,20 @@ class MainWindow(QtWidgets.QMainWindow):
         grid.addWidget(QtWidgets.QLabel("Qtd Paletes Produzidos"), 0, 2, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         grid.addWidget(self.paletes_produzidos, 0, 3)
         # Linha 1: Total de Veículos | Veículos finalizados
-        grid.addWidget(QtWidgets.QLabel("Total de Veículos"), 1, 0, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        grid.addWidget(QtWidgets.QLabel("Total de fichas"), 1, 0, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         grid.addWidget(self.total_veiculos, 1, 1)
-        grid.addWidget(QtWidgets.QLabel("Veículos finalizados"), 1, 2, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        grid.addWidget(QtWidgets.QLabel("Fichas finalizadas"), 1, 2, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         grid.addWidget(self.veiculos_finalizados, 1, 3)
         # Linha 2: Descargas (C3) | Carregamentos (C3)
         grid.addWidget(QtWidgets.QLabel("Qtd Descargas (C3)"), 2, 0, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.descargas_c3, 2, 1)
+        # Wrap Descargas (C3) + botão editor
+        desc_row = QtWidgets.QHBoxLayout(); desc_row.setSpacing(8)
+        self.btn_edit_descargas = QtWidgets.QPushButton("Editar Descargas C3…")
+        self.btn_edit_descargas.clicked.connect(self.on_edit_descargas)
+        desc_row.addWidget(self.descargas_c3)
+        desc_row.addWidget(self.btn_edit_descargas)
+        desc_wrap = QtWidgets.QWidget(); desc_wrap.setLayout(desc_row)
+        grid.addWidget(desc_wrap, 2, 1)
         grid.addWidget(QtWidgets.QLabel("Qtd Carregamentos (C3)"), 2, 2, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         grid.addWidget(self.carregamentos_c3, 2, 3)
         # Linha 3: Paletes Pendentes | Veículos pendentes (com botão editor)
@@ -231,9 +238,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self._session = next(self._session_cm)
         self.repo = MetricaRepository(self._session)
         self.veic_repo = VeiculoPendenteRepository(self._session)
+        self.desc_repo = VeiculoDescargaC3Repository(self._session)
 
-        # buffer temporário de veículos pendentes antes de salvar
+        # buffers temporários antes de salvar
         self._buffer_veiculos = []  # type: list[tuple[str, int]]
+        self._buffer_descargas = []  # type: list[tuple[str, int]]
 
         # Estado de paginação
         self._page_size_val = int(self.page_size.currentText())
@@ -405,6 +414,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 except Exception:
                     # continua, mas informa depois
                     pass
+            # Salva veículos de Descarga C3 vinculados
+            for veiculo, pct in self._buffer_descargas:
+                try:
+                    self.desc_repo.add(created.id, veiculo, int(pct))
+                except Exception:
+                    pass
         except Exception as e:  # pragma: no cover
             QtWidgets.QMessageBox.critical(self, "Erro ao salvar", str(e))
             return
@@ -421,6 +436,7 @@ class MainWindow(QtWidgets.QMainWindow):
         ):
             w.setValue(0)
         self._buffer_veiculos = []
+        self._buffer_descargas = []
         # Após inserir, volta para a primeira página (mais recentes)
         self._current_page = 1
         self.refresh()
@@ -432,19 +448,31 @@ class MainWindow(QtWidgets.QMainWindow):
             self._buffer_veiculos = dlg.get_rows()
             self.veiculos_pendentes.setValue(len(self._buffer_veiculos))
 
+    def on_edit_descargas(self) -> None:
+        # Abre diálogo para editar veículos de Descarga C3 no buffer
+        dlg = VeiculosDialog(self, initial=self._buffer_descargas, read_only=False, title="Veículos Descarga C3")
+        if dlg.exec() == QtWidgets.QDialog.Accepted:
+            self._buffer_descargas = dlg.get_rows()
+
     def on_table_double_click(self, index: QtCore.QModelIndex) -> None:
         if not index.isValid():
             return
         col = index.column()
-        # Coluna "Veículos Pendentes" é a 7 (0-based) conforme HEADERS
-        if col != 7:
-            return
         row = index.row()
         metrica_id = int(self.model._rows[row][0])
-        items = self.veic_repo.list_by_metrica(metrica_id)
-        initial = [(it.veiculo, int(it.porcentagem)) for it in items]
-        dlg = VeiculosDialog(self, initial=initial, read_only=True, title=f"Veículos (Métrica {metrica_id})")
-        dlg.exec()
+        # Descargas (C3) coluna 5 abre veículos de descarga C3
+        if col == 5:
+            items = self.desc_repo.list_by_metrica(metrica_id)
+            initial = [(it.veiculo, int(it.porcentagem)) for it in items]
+            dlg = VeiculosDialog(self, initial=initial, read_only=True, title=f"Descargas C3 (Métrica {metrica_id})")
+            dlg.exec()
+            return
+        # Veículos Pendentes coluna 7 (0-based)
+        if col == 7:
+            items = self.veic_repo.list_by_metrica(metrica_id)
+            initial = [(it.veiculo, int(it.porcentagem)) for it in items]
+            dlg = VeiculosDialog(self, initial=initial, read_only=True, title=f"Veículos Pendentes (Métrica {metrica_id})")
+            dlg.exec()
 
     def on_delete(self) -> None:
         idx = self.table.currentIndex()

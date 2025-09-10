@@ -4,7 +4,7 @@ from typing import Sequence
 from sqlalchemy import select, delete, func
 from sqlalchemy.orm import Session
 
-from .models import Metrica, VeiculoPendente
+from .models import Metrica, VeiculoPendente, VeiculoDescargaC3
 
 
 
@@ -83,6 +83,34 @@ class VeiculoPendenteRepository:
 
     def delete(self, veiculo_id: int) -> bool:
         v = self.session.get(VeiculoPendente, veiculo_id)
+        if not v:
+            return False
+        self.session.delete(v)
+        self.session.commit()
+        return True
+
+
+class VeiculoDescargaC3Repository:
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def add(self, metrica_id: int, veiculo: str, porcentagem: int) -> VeiculoDescargaC3:
+        v = VeiculoDescargaC3(metrica_id=metrica_id, veiculo=veiculo, porcentagem=porcentagem)
+        self.session.add(v)
+        self.session.commit()
+        self.session.refresh(v)
+        return v
+
+    def list_by_metrica(self, metrica_id: int):
+        stmt = (
+            select(VeiculoDescargaC3)
+            .where(VeiculoDescargaC3.metrica_id == metrica_id)
+            .order_by(VeiculoDescargaC3.criado_em.desc())
+        )
+        return list(self.session.execute(stmt).scalars().all())
+
+    def delete(self, item_id: int) -> bool:
+        v = self.session.get(VeiculoDescargaC3, item_id)
         if not v:
             return False
         self.session.delete(v)

@@ -46,3 +46,16 @@ class VeiculoPendente(Base):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<VeiculoPendente id={self.id} metrica_id={self.metrica_id} veiculo={self.veiculo!r} porcentagem={self.porcentagem}>"
+
+
+class VeiculoDescargaC3(Base):
+    __tablename__ = "veiculos_descarga_c3"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    metrica_id: Mapped[int] = mapped_column(Integer, ForeignKey("metricas.id", ondelete="CASCADE"), index=True, nullable=False)
+    veiculo: Mapped[str] = mapped_column(String(200), nullable=False)
+    porcentagem: Mapped[int] = mapped_column(Integer, nullable=False)
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<VeiculoDescargaC3 id={self.id} metrica_id={self.metrica_id} veiculo={self.veiculo!r} porcentagem={self.porcentagem}>"
