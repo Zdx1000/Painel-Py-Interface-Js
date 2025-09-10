@@ -72,6 +72,7 @@ class ApiHandler(BaseHTTPRequestHandler):
                         "paletes_produzidos": m.paletes_produzidos,
                         "total_veiculos": m.total_veiculos,
                         "veiculos_finalizados": m.veiculos_finalizados,
+                        "fichas_antecipadas": getattr(m, "fichas_antecipadas", 0),
                         "descargas_c3": m.descargas_c3,
                         "carregamentos_c3": m.carregamentos_c3,
                         "veiculos_pendentes": m.veiculos_pendentes,

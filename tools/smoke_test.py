@@ -18,6 +18,7 @@ if __name__ == "__main__":
         paletes_produzidos=2,
         total_veiculos=3,
         veiculos_finalizados=1,
+        fichas_antecipadas=0,
         descargas_c3=1,
         carregamentos_c3=1,
         veiculos_pendentes=2,

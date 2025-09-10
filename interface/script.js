@@ -30,6 +30,7 @@ function renderTable(items) {
 			m.carregamentos_c3,
 			m.veiculos_pendentes,
 			m.paletes_pendentes,
+			(m.fichas_antecipadas ?? 0),
 			formatDate(m.criado_em),
 		];
 		for (const c of cols) {

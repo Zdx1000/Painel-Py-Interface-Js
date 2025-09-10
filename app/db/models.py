@@ -20,6 +20,7 @@ class Metrica(Base):
     paletes_produzidos: Mapped[int] = mapped_column(Integer, nullable=False)
     total_veiculos: Mapped[int] = mapped_column(Integer, nullable=False)
     veiculos_finalizados: Mapped[int] = mapped_column(Integer, nullable=False)
+    fichas_antecipadas: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     descargas_c3: Mapped[int] = mapped_column(Integer, nullable=False)
     carregamentos_c3: Mapped[int] = mapped_column(Integer, nullable=False)
     veiculos_pendentes: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -59,3 +60,16 @@ class VeiculoDescargaC3(Base):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<VeiculoDescargaC3 id={self.id} metrica_id={self.metrica_id} veiculo={self.veiculo!r} porcentagem={self.porcentagem}>"
+
+
+class VeiculoAntecipado(Base):
+    __tablename__ = "veiculos_antecipados"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    metrica_id: Mapped[int] = mapped_column(Integer, ForeignKey("metricas.id", ondelete="CASCADE"), index=True, nullable=False)
+    veiculo: Mapped[str] = mapped_column(String(200), nullable=False)
+    porcentagem: Mapped[int] = mapped_column(Integer, nullable=False)
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<VeiculoAntecipado id={self.id} metrica_id={self.metrica_id} veiculo={self.veiculo!r} porcentagem={self.porcentagem}>"

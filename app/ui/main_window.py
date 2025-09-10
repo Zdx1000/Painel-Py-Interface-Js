@@ -7,7 +7,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from ..db.database import init_db, get_session
 from ..db.repository import MetricaRepository
 from .veiculos_dialog import VeiculosDialog
-from ..db.repository import VeiculoPendenteRepository, VeiculoDescargaC3Repository
+from ..db.repository import VeiculoPendenteRepository, VeiculoDescargaC3Repository, VeiculoAntecipadoRepository
 from pydantic import BaseModel, field_validator, ValidationError
 from .theme import DARK_QSS
 from ..api.server import ApiServer
@@ -25,6 +25,7 @@ class MetricaTableModel(QtCore.QAbstractTableModel):
         "Carregamentos (C3)",
         "Veículos Pendentes",
         "Paletes Pendentes",
+    "Fichas antecipadas",
         "Criado em",
     ]
 
@@ -71,6 +72,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.descargas_c3 = QtWidgets.QSpinBox(); self.descargas_c3.setRange(0, 10_000)
         self.carregamentos_c3 = QtWidgets.QSpinBox(); self.carregamentos_c3.setRange(0, 10_000)
         self.veiculos_pendentes = QtWidgets.QSpinBox(); self.veiculos_pendentes.setRange(0, 10_000)
+        self.fichas_antecipadas = QtWidgets.QSpinBox(); self.fichas_antecipadas.setRange(0, 10_000)
         self.btn_edit_veics = QtWidgets.QPushButton("Editar Veículos…")
         self.btn_edit_veics.clicked.connect(self.on_edit_veiculos)
         self.paletes_pendentes = QtWidgets.QSpinBox(); self.paletes_pendentes.setRange(0, 10_000)
@@ -90,6 +92,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.descargas_c3,
             self.carregamentos_c3,
             self.veiculos_pendentes,
+            self.fichas_antecipadas,
             self.paletes_pendentes,
             self.btn_edit_veics,
             self.btn_add,
@@ -134,6 +137,15 @@ class MainWindow(QtWidgets.QMainWindow):
         grid.addWidget(self.paletes_pendentes, 3, 1)
         grid.addWidget(QtWidgets.QLabel("Veículos pendentes"), 3, 2, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         grid.addWidget(veic_wrap, 3, 3)
+        # Linha 4: Fichas antecipadas (com editor de veículos antecipados)
+        grid.addWidget(QtWidgets.QLabel("Fichas antecipadas"), 4, 0, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        ant_row = QtWidgets.QHBoxLayout(); ant_row.setSpacing(8)
+        self.btn_edit_antecipados = QtWidgets.QPushButton("Editar Antecipados…")
+        self.btn_edit_antecipados.clicked.connect(self.on_edit_antecipados)
+        ant_row.addWidget(self.fichas_antecipadas)
+        ant_row.addWidget(self.btn_edit_antecipados)
+        ant_wrap = QtWidgets.QWidget(); ant_wrap.setLayout(ant_row)
+        grid.addWidget(ant_wrap, 4, 1)
 
         top = QtWidgets.QHBoxLayout()
         top.setSpacing(16)
@@ -239,10 +251,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.repo = MetricaRepository(self._session)
         self.veic_repo = VeiculoPendenteRepository(self._session)
         self.desc_repo = VeiculoDescargaC3Repository(self._session)
+        self.antec_repo = VeiculoAntecipadoRepository(self._session)
 
         # buffers temporários antes de salvar
         self._buffer_veiculos = []  # type: list[tuple[str, int]]
         self._buffer_descargas = []  # type: list[tuple[str, int]]
+        self._buffer_antecipados = []  # type: list[tuple[str, int]]
 
         # Estado de paginação
         self._page_size_val = int(self.page_size.currentText())
@@ -313,6 +327,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     m.carregamentos_c3,
                     m.veiculos_pendentes,
                     m.paletes_pendentes,
+                    getattr(m, "fichas_antecipadas", 0),
                     m.criado_em.strftime("%d/%m/%Y %H:%M"),
                 )
             )
@@ -358,6 +373,7 @@ class MainWindow(QtWidgets.QMainWindow):
             paletes_produzidos: int
             total_veiculos: int
             veiculos_finalizados: int
+            fichas_antecipadas: int
             descargas_c3: int
             carregamentos_c3: int
             veiculos_pendentes: int
@@ -368,6 +384,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 "paletes_produzidos",
                 "total_veiculos",
                 "veiculos_finalizados",
+                "fichas_antecipadas",
                 "descargas_c3",
                 "carregamentos_c3",
                 "veiculos_pendentes",
@@ -384,6 +401,7 @@ class MainWindow(QtWidgets.QMainWindow):
             "paletes_produzidos": int(self.paletes_produzidos.value()),
             "total_veiculos": int(self.total_veiculos.value()),
             "veiculos_finalizados": int(self.veiculos_finalizados.value()),
+            "fichas_antecipadas": int(self.fichas_antecipadas.value()),
             "descargas_c3": int(self.descargas_c3.value()),
             "carregamentos_c3": int(self.carregamentos_c3.value()),
             "veiculos_pendentes": int(self.veiculos_pendentes.value()),
@@ -402,6 +420,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 paletes_produzidos=payload.paletes_produzidos,
                 total_veiculos=payload.total_veiculos,
                 veiculos_finalizados=payload.veiculos_finalizados,
+                fichas_antecipadas=payload.fichas_antecipadas,
                 descargas_c3=payload.descargas_c3,
                 carregamentos_c3=payload.carregamentos_c3,
                 veiculos_pendentes=payload.veiculos_pendentes,
@@ -420,6 +439,12 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.desc_repo.add(created.id, veiculo, int(pct))
                 except Exception:
                     pass
+            # Salva veículos antecipados vinculados
+            for veiculo, pct in self._buffer_antecipados:
+                try:
+                    self.antec_repo.add(created.id, veiculo, int(pct))
+                except Exception:
+                    pass
         except Exception as e:  # pragma: no cover
             QtWidgets.QMessageBox.critical(self, "Erro ao salvar", str(e))
             return
@@ -432,11 +457,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self.descargas_c3,
             self.carregamentos_c3,
             self.veiculos_pendentes,
+            self.fichas_antecipadas,
             self.paletes_pendentes,
         ):
             w.setValue(0)
         self._buffer_veiculos = []
         self._buffer_descargas = []
+        self._buffer_antecipados = []
         # Após inserir, volta para a primeira página (mais recentes)
         self._current_page = 1
         self.refresh()
@@ -453,6 +480,12 @@ class MainWindow(QtWidgets.QMainWindow):
         dlg = VeiculosDialog(self, initial=self._buffer_descargas, read_only=False, title="Veículos Descarga C3")
         if dlg.exec() == QtWidgets.QDialog.Accepted:
             self._buffer_descargas = dlg.get_rows()
+
+    def on_edit_antecipados(self) -> None:
+        # Abre diálogo para editar veículos antecipados no buffer
+        dlg = VeiculosDialog(self, initial=self._buffer_antecipados, read_only=False, title="Veículos Antecipados")
+        if dlg.exec() == QtWidgets.QDialog.Accepted:
+            self._buffer_antecipados = dlg.get_rows()
 
     def on_table_double_click(self, index: QtCore.QModelIndex) -> None:
         if not index.isValid():
@@ -472,6 +505,13 @@ class MainWindow(QtWidgets.QMainWindow):
             items = self.veic_repo.list_by_metrica(metrica_id)
             initial = [(it.veiculo, int(it.porcentagem)) for it in items]
             dlg = VeiculosDialog(self, initial=initial, read_only=True, title=f"Veículos Pendentes (Métrica {metrica_id})")
+            dlg.exec()
+            return
+        # Fichas antecipadas coluna 9 (0-based)
+        if col == 9:
+            items = self.antec_repo.list_by_metrica(metrica_id)
+            initial = [(it.veiculo, int(it.porcentagem)) for it in items]
+            dlg = VeiculosDialog(self, initial=initial, read_only=True, title=f"Veículos Antecipados (Métrica {metrica_id})")
             dlg.exec()
 
     def on_delete(self) -> None:

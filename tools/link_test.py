@@ -18,6 +18,7 @@ m = met_repo.add(
     paletes_produzidos=8,
     total_veiculos=5,
     veiculos_finalizados=2,
+    fichas_antecipadas=0,
     descargas_c3=1,
     carregamentos_c3=2,
     veiculos_pendentes=0,

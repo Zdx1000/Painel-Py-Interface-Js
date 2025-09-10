@@ -4,7 +4,7 @@ from typing import Sequence
 from sqlalchemy import select, delete, func
 from sqlalchemy.orm import Session
 
-from .models import Metrica, VeiculoPendente, VeiculoDescargaC3
+from .models import Metrica, VeiculoPendente, VeiculoDescargaC3, VeiculoAntecipado
 
 
 
@@ -18,6 +18,7 @@ class MetricaRepository:
         paletes_produzidos: int,
         total_veiculos: int,
         veiculos_finalizados: int,
+        fichas_antecipadas: int,
         descargas_c3: int,
         carregamentos_c3: int,
         veiculos_pendentes: int,
@@ -28,6 +29,7 @@ class MetricaRepository:
             paletes_produzidos=paletes_produzidos,
             total_veiculos=total_veiculos,
             veiculos_finalizados=veiculos_finalizados,
+            fichas_antecipadas=fichas_antecipadas,
             descargas_c3=descargas_c3,
             carregamentos_c3=carregamentos_c3,
             veiculos_pendentes=veiculos_pendentes,
@@ -61,6 +63,8 @@ class MetricaRepository:
             return False
         # Remove veículos vinculados primeiro (garante integridade no SQLite)
         self.session.execute(delete(VeiculoPendente).where(VeiculoPendente.metrica_id == metrica_id))
+        self.session.execute(delete(VeiculoDescargaC3).where(VeiculoDescargaC3.metrica_id == metrica_id))
+        self.session.execute(delete(VeiculoAntecipado).where(VeiculoAntecipado.metrica_id == metrica_id))
         self.session.delete(m)
         self.session.commit()
         return True
@@ -111,6 +115,34 @@ class VeiculoDescargaC3Repository:
 
     def delete(self, item_id: int) -> bool:
         v = self.session.get(VeiculoDescargaC3, item_id)
+        if not v:
+            return False
+        self.session.delete(v)
+        self.session.commit()
+        return True
+
+
+class VeiculoAntecipadoRepository:
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def add(self, metrica_id: int, veiculo: str, porcentagem: int) -> VeiculoAntecipado:
+        v = VeiculoAntecipado(metrica_id=metrica_id, veiculo=veiculo, porcentagem=porcentagem)
+        self.session.add(v)
+        self.session.commit()
+        self.session.refresh(v)
+        return v
+
+    def list_by_metrica(self, metrica_id: int):
+        stmt = (
+            select(VeiculoAntecipado)
+            .where(VeiculoAntecipado.metrica_id == metrica_id)
+            .order_by(VeiculoAntecipado.criado_em.desc())
+        )
+        return list(self.session.execute(stmt).scalars().all())
+
+    def delete(self, item_id: int) -> bool:
+        v = self.session.get(VeiculoAntecipado, item_id)
         if not v:
             return False
         self.session.delete(v)
