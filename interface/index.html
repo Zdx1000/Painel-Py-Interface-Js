@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>Gráficos / Métricas</title>
+	<link rel="stylesheet" href="style.css" />
+	<script defer src="script.js"></script>
+	<style>
+		/* fallback mínimo caso style.css não carregue */
+		body{background:#0d1117;color:#e6eef5;font-family:Segoe UI,Roboto,Arial;margin:0}
+	</style>
+</head>
+<body>
+	<header class="top">
+		<h1>Relatório de Métricas</h1>
+		<div class="controls">
+			<label>Mostrar
+				<select id="pageSize">
+					<option>20</option>
+					<option>40</option>
+					<option>60</option>
+					<option>80</option>
+					<option>100</option>
+				</select>
+			registros</label>
+		</div>
+	</header>
+	<main>
+		<div class="pager">
+			<button id="prevBtn">Anterior</button>
+			<span id="pageInfo">Página 1 de 1</span>
+			<button id="nextBtn">Próxima</button>
+		</div>
+		<div class="tableWrap">
+			<table id="tbl">
+				<thead>
+					<tr>
+						<th>ID</th>
+						<th>Paletes Agendados</th>
+						<th>Paletes Produzidos</th>
+						<th>Total Veículos</th>
+						<th>Veículos Finalizados</th>
+						<th>Descargas (C3)</th>
+						<th>Carregamentos (C3)</th>
+						<th>Veículos Pendentes</th>
+						<th>Paletes Pendentes</th>
+						<th>Criado em</th>
+					</tr>
+				</thead>
+				<tbody></tbody>
+			</table>
+		</div>
+	</main>
+</body>
+</html>
