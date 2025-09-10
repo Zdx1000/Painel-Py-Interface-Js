@@ -2,7 +2,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, DateTime, Integer, ForeignKey
+from sqlalchemy import String, DateTime, Integer, ForeignKey, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -25,6 +25,7 @@ class Metrica(Base):
     carregamentos_c3: Mapped[int] = mapped_column(Integer, nullable=False)
     veiculos_pendentes: Mapped[int] = mapped_column(Integer, nullable=False)
     paletes_pendentes: Mapped[int] = mapped_column(Integer, nullable=False)
+    observacao: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     def __repr__(self) -> str:  # pragma: no cover

@@ -19,6 +19,7 @@ if __name__ == "__main__":
         total_veiculos=3,
         veiculos_finalizados=1,
         fichas_antecipadas=0,
+        observacao=None,
         descargas_c3=1,
         carregamentos_c3=1,
         veiculos_pendentes=2,

@@ -3,6 +3,7 @@ import sys
 from typing import Optional
 
 from PySide6 import QtCore, QtGui, QtWidgets
+from datetime import timezone, timedelta
 
 from ..db.database import init_db, get_session
 from ..db.repository import MetricaRepository
@@ -11,6 +12,8 @@ from ..db.repository import VeiculoPendenteRepository, VeiculoDescargaC3Reposito
 from pydantic import BaseModel, field_validator, ValidationError
 from .theme import DARK_QSS
 from ..api.server import ApiServer
+from sqlalchemy import select
+from ..db.models import Metrica, VeiculoPendente, VeiculoDescargaC3, VeiculoAntecipado
 
 
 
@@ -57,6 +60,30 @@ class MetricaTableModel(QtCore.QAbstractTableModel):
         self.endResetModel()
 
 
+class ExpandingTextEdit(QtWidgets.QTextEdit):
+    def __init__(self, *args, collapsed_height: int = 48, expanded_height: int = 120, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._collapsed_h = collapsed_height
+        self._expanded_h = expanded_height
+        self.setFixedHeight(self._collapsed_h)
+        self.setAcceptRichText(False)
+        self.setTabChangesFocus(True)
+
+    def focusInEvent(self, e: QtGui.QFocusEvent) -> None:  # type: ignore[override]
+        try:
+            self.setFixedHeight(self._expanded_h)
+        except Exception:
+            pass
+        super().focusInEvent(e)
+
+    def focusOutEvent(self, e: QtGui.QFocusEvent) -> None:  # type: ignore[override]
+        super().focusOutEvent(e)
+        try:
+            self.setFixedHeight(self._collapsed_h)
+        except Exception:
+            pass
+
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -76,12 +103,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_edit_veics = QtWidgets.QPushButton("Editar Veículos…")
         self.btn_edit_veics.clicked.connect(self.on_edit_veiculos)
         self.paletes_pendentes = QtWidgets.QSpinBox(); self.paletes_pendentes.setRange(0, 10_000)
+        # Campo Observação (expansível ao foco)
+        self.observacao = ExpandingTextEdit()
+        self.observacao.setPlaceholderText("Observação (clique para expandir)")
+        self.observacao.setToolTip("Campo livre para observações deste registro")
 
         self.btn_add = QtWidgets.QPushButton("Adicionar")
         self.btn_add.clicked.connect(self.on_add)
         self.btn_del = QtWidgets.QPushButton("Excluir Selecionado")
         self.btn_del.setObjectName("danger")
         self.btn_del.clicked.connect(self.on_delete)
+        # Botão Exportar
+        self.btn_export = QtWidgets.QPushButton("Exportar")
+        self.btn_export.clicked.connect(self.on_export)
 
         # Alturas mínimas para controles
         for w in (
@@ -97,8 +131,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.btn_edit_veics,
             self.btn_add,
             self.btn_del,
+            self.btn_export,
         ):
             w.setMinimumHeight(34)
+        # Altura mínima para o campo de observação já é controlada pela classe
 
         form = QtWidgets.QWidget()
         grid = QtWidgets.QGridLayout(form)
@@ -146,6 +182,9 @@ class MainWindow(QtWidgets.QMainWindow):
         ant_row.addWidget(self.btn_edit_antecipados)
         ant_wrap = QtWidgets.QWidget(); ant_wrap.setLayout(ant_row)
         grid.addWidget(ant_wrap, 4, 1)
+        # Observação à direita de Fichas antecipadas
+        grid.addWidget(QtWidgets.QLabel("Observação"), 4, 2, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.observacao, 4, 3)
 
         top = QtWidgets.QHBoxLayout()
         top.setSpacing(16)
@@ -154,6 +193,7 @@ class MainWindow(QtWidgets.QMainWindow):
         buttons.setSpacing(10)
         buttons.addWidget(self.btn_add)
         buttons.addWidget(self.btn_del)
+        buttons.addWidget(self.btn_export)
         buttons.addStretch(1)
         bwrap = QtWidgets.QWidget(); bwrap.setLayout(buttons)
         top.addWidget(bwrap)
@@ -316,6 +356,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
         rows = []
         for m in self.repo.list_page(limit=per_page, offset=offset):
+            # Converte criado_em (UTC) para America/Sao_Paulo
+            try:
+                from zoneinfo import ZoneInfo  # Python 3.9+
+                dt = m.criado_em
+                if getattr(dt, "tzinfo", None) is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                dt_sp = dt.astimezone(ZoneInfo("America/Sao_Paulo"))
+                criado_fmt = dt_sp.strftime("%d/%m/%Y %H:%M")
+            except Exception:
+                try:
+                    criado_fmt = (m.criado_em - timedelta(hours=3)).strftime("%d/%m/%Y %H:%M")
+                except Exception:
+                    criado_fmt = str(m.criado_em)
             rows.append(
                 (
                     m.id,
@@ -328,7 +381,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     m.veiculos_pendentes,
                     m.paletes_pendentes,
                     getattr(m, "fichas_antecipadas", 0),
-                    m.criado_em.strftime("%d/%m/%Y %H:%M"),
+                    criado_fmt,
                 )
             )
         self.model.set_rows(rows)
@@ -374,6 +427,7 @@ class MainWindow(QtWidgets.QMainWindow):
             total_veiculos: int
             veiculos_finalizados: int
             fichas_antecipadas: int
+            observacao: str | None
             descargas_c3: int
             carregamentos_c3: int
             veiculos_pendentes: int
@@ -402,6 +456,7 @@ class MainWindow(QtWidgets.QMainWindow):
             "total_veiculos": int(self.total_veiculos.value()),
             "veiculos_finalizados": int(self.veiculos_finalizados.value()),
             "fichas_antecipadas": int(self.fichas_antecipadas.value()),
+            "observacao": (self.observacao.toPlainText().strip() or None),
             "descargas_c3": int(self.descargas_c3.value()),
             "carregamentos_c3": int(self.carregamentos_c3.value()),
             "veiculos_pendentes": int(self.veiculos_pendentes.value()),
@@ -421,6 +476,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 total_veiculos=payload.total_veiculos,
                 veiculos_finalizados=payload.veiculos_finalizados,
                 fichas_antecipadas=payload.fichas_antecipadas,
+                observacao=payload.observacao,
                 descargas_c3=payload.descargas_c3,
                 carregamentos_c3=payload.carregamentos_c3,
                 veiculos_pendentes=payload.veiculos_pendentes,
@@ -461,6 +517,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.paletes_pendentes,
         ):
             w.setValue(0)
+        self.observacao.setPlainText("")
         self._buffer_veiculos = []
         self._buffer_descargas = []
         self._buffer_antecipados = []
@@ -526,6 +583,142 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, "Exclusão", "Registro não encontrado.")
         # Se exclusão afetar última página, refresh ajusta a página atual
         self.refresh()
+
+    def on_export(self) -> None:
+        # Escolhe o arquivo de saída
+        suggested = QtCore.QDir.homePath() + "/export-metricas.xlsx"
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            "Exportar para XLSX",
+            suggested,
+            "Planilha Excel (*.xlsx)"
+        )
+        if not path:
+            return
+        if not path.lower().endswith(".xlsx"):
+            path += ".xlsx"
+
+        # Tenta importar openpyxl on-demand
+        try:
+            from openpyxl import Workbook  # type: ignore
+        except Exception:
+            QtWidgets.QMessageBox.critical(
+                self,
+                "Dependência ausente",
+                "Para exportar em XLSX, instale o pacote 'openpyxl'."
+            )
+            return
+
+        try:
+            # Busca todos os dados diretamente via sessão
+            metricas = self._session.execute(select(Metrica).order_by(Metrica.id.asc())).scalars().all()
+            pendentes = self._session.execute(select(VeiculoPendente).order_by(VeiculoPendente.id.asc())).scalars().all()
+            descargas = self._session.execute(select(VeiculoDescargaC3).order_by(VeiculoDescargaC3.id.asc())).scalars().all()
+            antecip = self._session.execute(select(VeiculoAntecipado).order_by(VeiculoAntecipado.id.asc())).scalars().all()
+
+            wb = Workbook()
+            # Remove a planilha inicial padrão
+            try:
+                wb.remove(wb.active)
+            except Exception:
+                pass
+
+            def add_sheet(title: str, headers: list[str], rows: list[list]):
+                ws = wb.create_sheet(title=title[:31] if title else "Sheet")
+                ws.append(headers)
+                for r in rows:
+                    ws.append(r)
+
+            # Sheet Métricas
+            add_sheet(
+                "Metricas",
+                [
+                    "id",
+                    "paletes_agendados",
+                    "paletes_produzidos",
+                    "total_veiculos",
+                    "veiculos_finalizados",
+                    "descargas_c3",
+                    "carregamentos_c3",
+                    "veiculos_pendentes",
+                    "paletes_pendentes",
+                    "fichas_antecipadas",
+                    "observacao",
+                    "criado_em",
+                ],
+                [
+                    [
+                        m.id,
+                        m.paletes_agendados,
+                        m.paletes_produzidos,
+                        m.total_veiculos,
+                        m.veiculos_finalizados,
+                        m.descargas_c3,
+                        m.carregamentos_c3,
+                        m.veiculos_pendentes,
+                        m.paletes_pendentes,
+                        getattr(m, "fichas_antecipadas", 0),
+                        (m.observacao or ""),
+                        (m.criado_em.strftime("%d/%m/%Y %H:%M") if hasattr(m, "criado_em") and m.criado_em else ""),
+                    ]
+                    for m in metricas
+                ],
+            )
+
+            # Sheet Veículos Pendentes
+            add_sheet(
+                "VeiculosPendentes",
+                ["id", "metrica_id", "veiculo", "porcentagem", "criado_em"],
+                [
+                    [
+                        v.id,
+                        v.metrica_id,
+                        v.veiculo,
+                        int(v.porcentagem),
+                        (v.criado_em.strftime("%d/%m/%Y %H:%M") if hasattr(v, "criado_em") and v.criado_em else ""),
+                    ]
+                    for v in pendentes
+                ],
+            )
+
+            # Sheet Descargas C3
+            add_sheet(
+                "DescargasC3",
+                ["id", "metrica_id", "veiculo", "porcentagem", "criado_em"],
+                [
+                    [
+                        d.id,
+                        d.metrica_id,
+                        d.veiculo,
+                        int(d.porcentagem),
+                        (d.criado_em.strftime("%d/%m/%Y %H:%M") if hasattr(d, "criado_em") and d.criado_em else ""),
+                    ]
+                    for d in descargas
+                ],
+            )
+
+            # Sheet Antecipados
+            add_sheet(
+                "Antecipados",
+                ["id", "metrica_id", "veiculo", "porcentagem", "criado_em"],
+                [
+                    [
+                        a.id,
+                        a.metrica_id,
+                        a.veiculo,
+                        int(a.porcentagem),
+                        (a.criado_em.strftime("%d/%m/%Y %H:%M") if hasattr(a, "criado_em") and a.criado_em else ""),
+                    ]
+                    for a in antecip
+                ],
+            )
+
+            wb.save(path)
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Erro ao exportar", str(e))
+            return
+
+        QtWidgets.QMessageBox.information(self, "Exportação", f"Arquivo salvo em:\n{path}")
 
 
 def run() -> int:

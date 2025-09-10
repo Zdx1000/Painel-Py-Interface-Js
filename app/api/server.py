@@ -7,6 +7,7 @@ from urllib.parse import urlparse, parse_qs
 from datetime import datetime
 
 from ..db.database import get_session
+from datetime import timezone
 from ..db.repository import MetricaRepository, VeiculoPendenteRepository, VeiculoDescargaC3Repository
 
 
@@ -66,6 +67,15 @@ class ApiHandler(BaseHTTPRequestHandler):
                 offset = (page - 1) * page_size
                 items = []
                 for m in repo.list_page(limit=page_size, offset=offset):
+                    # criado_em em America/Sao_Paulo
+                    try:
+                        from zoneinfo import ZoneInfo
+                        dt = m.criado_em
+                        if getattr(dt, "tzinfo", None) is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        criado_sp = dt.astimezone(ZoneInfo("America/Sao_Paulo")).isoformat(timespec="minutes")
+                    except Exception:
+                        criado_sp = (m.criado_em).isoformat(timespec="minutes")
                     items.append({
                         "id": m.id,
                         "paletes_agendados": m.paletes_agendados,
@@ -73,11 +83,12 @@ class ApiHandler(BaseHTTPRequestHandler):
                         "total_veiculos": m.total_veiculos,
                         "veiculos_finalizados": m.veiculos_finalizados,
                         "fichas_antecipadas": getattr(m, "fichas_antecipadas", 0),
+                        "observacao": getattr(m, "observacao", None),
                         "descargas_c3": m.descargas_c3,
                         "carregamentos_c3": m.carregamentos_c3,
                         "veiculos_pendentes": m.veiculos_pendentes,
                         "paletes_pendentes": m.paletes_pendentes,
-                        "criado_em": (m.criado_em if isinstance(m.criado_em, str) else m.criado_em.isoformat(timespec="minutes")),
+                        "criado_em": criado_sp,
                     })
                 return _json_response(self, 200, {
                     "page": page,

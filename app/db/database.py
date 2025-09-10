@@ -27,13 +27,19 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expi
 def init_db() -> None:
     from .models import Base  # noqa: F401
     Base.metadata.create_all(bind=engine)
-    # Migração leve: garante coluna fichas_antecipadas na tabela metricas
+    # Migração leve: garante colunas novas na tabela metricas
     try:
         with engine.connect() as conn:
             rows = conn.execute(text("PRAGMA table_info(metricas)")).fetchall()
             cols = {r[1] for r in rows}
             if "fichas_antecipadas" not in cols:
                 conn.execute(text("ALTER TABLE metricas ADD COLUMN fichas_antecipadas INTEGER NOT NULL DEFAULT 0"))
+                try:
+                    conn.commit()
+                except Exception:
+                    pass
+            if "observacao" not in cols:
+                conn.execute(text("ALTER TABLE metricas ADD COLUMN observacao TEXT NULL"))
                 try:
                     conn.commit()
                 except Exception:
