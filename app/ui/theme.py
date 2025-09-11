@@ -104,6 +104,22 @@ QWidget#appHeader {
   border: 1px solid #223047;
   border-radius: 12px;
 }
+
+/* Observação: destaque sutil e melhor leitura */
+QTextEdit#obsEdit {
+  background-color: #0f1522;
+  border: 1px solid #2b3a55;
+  border-radius: 10px;
+  padding: 10px 12px;
+  selection-background-color: #1c5fe6;
+}
+QTextEdit#obsEdit:focus {
+  border: 1px solid #2aa052; /* tom verde sutil para indicar foco */
+  box-shadow: 0 0 0 2px rgba(42,160,82,0.25);
+}
+QTextEdit#obsEdit QScrollBar:vertical { background: transparent; width: 8px; }
+QTextEdit#obsEdit QScrollBar::handle:vertical { background: #31466b; border-radius: 4px; }
+QTextEdit#obsEdit QScrollBar::handle:vertical:hover { background: #3a5887; }
 """
 
 

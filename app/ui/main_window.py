@@ -61,27 +61,44 @@ class MetricaTableModel(QtCore.QAbstractTableModel):
 
 
 class ExpandingTextEdit(QtWidgets.QTextEdit):
-    def __init__(self, *args, collapsed_height: int = 48, expanded_height: int = 120, **kwargs):
+    """QTextEdit com animação suave de expansão ao focar."""
+    def __init__(self, *args, collapsed_height: int = 56, expanded_height: int = 160, **kwargs):
         super().__init__(*args, **kwargs)
         self._collapsed_h = collapsed_height
         self._expanded_h = expanded_height
-        self.setFixedHeight(self._collapsed_h)
+        # Política de tamanho e altura inicial via maximumHeight para permitir animação
+        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        self.setMinimumHeight(40)
+        self.setMaximumHeight(self._collapsed_h)
         self.setAcceptRichText(False)
         self.setTabChangesFocus(True)
-
-    def focusInEvent(self, e: QtGui.QFocusEvent) -> None:  # type: ignore[override]
+        # Melhora leitura com quebra de palavras
         try:
-            self.setFixedHeight(self._expanded_h)
+            self.setWordWrapMode(QtGui.QTextOption.WrapAtWordBoundaryOrAnywhere)
         except Exception:
             pass
+        # Animação
+        self._anim = QtCore.QPropertyAnimation(self, b"maximumHeight")
+        self._anim.setDuration(180)
+        self._anim.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+
+    def _animate_to(self, h: int) -> None:
+        try:
+            self._anim.stop()
+            self._anim.setStartValue(self.maximumHeight())
+            self._anim.setEndValue(h)
+            self._anim.start()
+        except Exception:
+            # Fallback imediato sem animação
+            self.setMaximumHeight(h)
+
+    def focusInEvent(self, e: QtGui.QFocusEvent) -> None:  # type: ignore[override]
+        self._animate_to(self._expanded_h)
         super().focusInEvent(e)
 
     def focusOutEvent(self, e: QtGui.QFocusEvent) -> None:  # type: ignore[override]
         super().focusOutEvent(e)
-        try:
-            self.setFixedHeight(self._collapsed_h)
-        except Exception:
-            pass
+        self._animate_to(self._collapsed_h)
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -105,8 +122,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.paletes_pendentes = QtWidgets.QSpinBox(); self.paletes_pendentes.setRange(0, 10_000)
         # Campo Observação (expansível ao foco)
         self.observacao = ExpandingTextEdit()
+        self.observacao.setObjectName("obsEdit")
         self.observacao.setPlaceholderText("Observação (clique para expandir)")
         self.observacao.setToolTip("Campo livre para observações deste registro")
+        # Efeito de sombra sutil
+        try:
+            shadow = QtWidgets.QGraphicsDropShadowEffect()
+            shadow.setBlurRadius(18)
+            shadow.setXOffset(0)
+            shadow.setYOffset(2)
+            shadow.setColor(QtGui.QColor(0, 0, 0, 140))
+            self.observacao.setGraphicsEffect(shadow)
+        except Exception:
+            pass
 
         self.btn_add = QtWidgets.QPushButton("Adicionar")
         self.btn_add.clicked.connect(self.on_add)
@@ -141,6 +169,8 @@ class MainWindow(QtWidgets.QMainWindow):
         grid.setHorizontalSpacing(16)
         grid.setVerticalSpacing(12)
         grid.setContentsMargins(16, 16, 16, 16)
+        # Coluna 3 (onde fica Observação) ocupa mais espaço
+        grid.setColumnStretch(3, 1)
         # Linha 0: Paletes na Agenda | Paletes Produzidos
         grid.addWidget(QtWidgets.QLabel("Qtd Paletes na Agenda"), 0, 0, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         grid.addWidget(self.paletes_agendados, 0, 1)
