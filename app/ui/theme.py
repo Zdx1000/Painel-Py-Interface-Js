@@ -115,7 +115,8 @@ QTextEdit#obsEdit {
 }
 QTextEdit#obsEdit:focus {
   border: 1px solid #2aa052; /* tom verde sutil para indicar foco */
-  box-shadow: 0 0 0 2px rgba(42,160,82,0.25);
+  /* Qt Style Sheets não suportam box-shadow; usamos uma borda mais espessa */
+  border-width: 2px;
 }
 QTextEdit#obsEdit QScrollBar:vertical { background: transparent; width: 8px; }
 QTextEdit#obsEdit QScrollBar::handle:vertical { background: #31466b; border-radius: 4px; }
