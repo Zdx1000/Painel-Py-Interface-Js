@@ -38,27 +38,27 @@ QPushButton:disabled { background-color: #3a4660; color: #9aa8bd; }
 QPushButton#danger { background-color: #e5484d; }
 QPushButton#danger:hover { background-color: #ff5c62; }
 QPushButton#danger:pressed { background-color: #c73a40; }
-/* Botão do cabeçalho (verde escuro) */
+/* Botão do cabeçalho (azul escuro) */
 QPushButton#headerBtn {
   color: #ffffff;
   border-radius: 12px;
   padding: 8px 16px;
   font-weight: 700;
   letter-spacing: 0.2px;
-  border: 1px solid #2e8b57; /* verde borda */
-  background-color: #1e7a3f; /* fallback */
+  border: 1px solid #1f4aa3; /* azul borda */
+  background-color: #1e3a8a; /* fallback azul escuro */
   background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-    stop:0 #2aa052, stop:1 #1e7a3f);
+    stop:0 #1d4ed8, stop:1 #1e3a8a);
 }
 QPushButton#headerBtn:hover {
-  border-color: #3fb46d;
+  border-color: #2a66ea;
   background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-    stop:0 #33b761, stop:1 #238a45);
+    stop:0 #2563eb, stop:1 #1f46a5);
 }
 QPushButton#headerBtn:pressed {
-  border-color: #1b5e34;
+  border-color: #163a8a;
   background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-    stop:0 #238a45, stop:1 #1b5e34);
+    stop:0 #1f46a5, stop:1 #172c7a);
 }
 QPushButton#headerBtn:disabled { background: #3a4660; color: #9aa8bd; border-color: #3a4660; }
 
@@ -114,7 +114,7 @@ QTextEdit#obsEdit {
   selection-background-color: #1c5fe6;
 }
 QTextEdit#obsEdit:focus {
-  border: 1px solid #2aa052; /* tom verde sutil para indicar foco */
+  border: 1px solid #3d8bff; /* tom azul para indicar foco */
   /* Qt Style Sheets não suportam box-shadow; usamos uma borda mais espessa */
   border-width: 2px;
 }

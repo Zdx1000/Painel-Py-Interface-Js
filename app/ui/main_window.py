@@ -8,12 +8,18 @@ from datetime import timezone, timedelta
 from ..db.database import init_db, get_session
 from ..db.repository import MetricaRepository
 from .veiculos_dialog import VeiculosDialog
-from ..db.repository import VeiculoPendenteRepository, VeiculoDescargaC3Repository, VeiculoAntecipadoRepository
+from ..db.repository import (
+    VeiculoPendenteRepository,
+    VeiculoDescargaC3Repository,
+    VeiculoAntecipadoRepository,
+    VeiculoCarregamentoC3Repository,
+)
 from pydantic import BaseModel, field_validator, ValidationError
 from .theme import DARK_QSS
 from ..api.server import ApiServer
 from sqlalchemy import select
 from ..db.models import Metrica, VeiculoPendente, VeiculoDescargaC3, VeiculoAntecipado
+from PySide6.QtCore import QEasingCurve, QEvent
 
 
 
@@ -58,6 +64,85 @@ class MetricaTableModel(QtCore.QAbstractTableModel):
         self.beginResetModel()
         self._rows = rows
         self.endResetModel()
+
+
+class InteractiveHighlightDelegate(QtWidgets.QStyledItemDelegate):
+    def __init__(self, view: QtWidgets.QTableView, interactive_cols: set[int]):
+        super().__init__(view)
+        self.view = view
+        self._interactive_cols = set(interactive_cols)
+        self._hover_index: QtCore.QModelIndex | None = None
+        self._hoverProgress = 0.0
+        self._anim = QtCore.QPropertyAnimation(self, b"hoverProgress")
+        self._anim.setDuration(220)
+        self._anim.setEasingCurve(QEasingCurve.OutCubic)
+
+    def setHoveredIndex(self, idx: QtCore.QModelIndex | None):
+        was_interactive = self._is_interactive(self._hover_index)
+        self._hover_index = idx if (idx and idx.isValid()) else None
+        now_interactive = self._is_interactive(self._hover_index)
+        # anima quando entra/sai de uma célula interativa
+        if now_interactive and self._hoverProgress < 1.0:
+            self._start_anim(self._hoverProgress, 1.0)
+        elif not now_interactive and self._hoverProgress > 0.0:
+            self._start_anim(self._hoverProgress, 0.0)
+        v = self.view
+        if v and v.viewport():
+            v.viewport().update()
+
+    def _start_anim(self, start: float, end: float):
+        try:
+            self._anim.stop()
+            self._anim.setStartValue(start)
+            self._anim.setEndValue(end)
+            self._anim.start()
+        except Exception:
+            self._hoverProgress = end
+
+    def _is_interactive(self, idx: QtCore.QModelIndex | None) -> bool:
+        return bool(idx and idx.isValid() and idx.column() in self._interactive_cols)
+
+    @QtCore.Property(float)
+    def hoverProgress(self) -> float:  # type: ignore[override]
+        return self._hoverProgress
+
+    @hoverProgress.setter
+    def hoverProgress(self, v: float) -> None:  # type: ignore[override]
+        self._hoverProgress = max(0.0, min(1.0, float(v)))
+        if self.view and self.view.viewport():
+            self.view.viewport().update()
+
+    def helpEvent(self, event: QtWidgets.QHelpEvent, view: QtWidgets.QAbstractItemView, option: QtWidgets.QStyleOptionViewItem, index: QtCore.QModelIndex) -> bool:  # type: ignore[override]
+        if self._is_interactive(index):
+            title = None
+            try:
+                mdl = view.model()
+                title = mdl.headerData(index.column(), QtCore.Qt.Horizontal, QtCore.Qt.DisplayRole)
+            except Exception:
+                title = None
+            tip = f"Dê dois cliques para ver {title}" if title else "Dê dois cliques para abrir detalhes"
+            QtWidgets.QToolTip.showText(event.globalPos(), tip)
+            return True
+        return super().helpEvent(event, view, option, index)
+
+    def paint(self, painter: QtGui.QPainter, option: QtWidgets.QStyleOptionViewItem, index: QtCore.QModelIndex) -> None:  # type: ignore[override]
+        # Pintura padrão
+        super().paint(painter, option, index)
+        if index.column() not in self._interactive_cols:
+            return
+        # Calcular hover do item
+        hovered = bool(option.state & QtWidgets.QStyle.State_MouseOver)
+        base = QtGui.QColor(29, 78, 216)  # ~#1d4ed8
+        alpha = int(36 + 84 * (self._hoverProgress if hovered else 0.25))
+        tint = QtGui.QColor(base.red(), base.green(), base.blue(), alpha)
+        r = option.rect.adjusted(2, 2, -2, -2)
+        painter.save()
+        painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
+        painter.setBrush(tint)
+        painter.setPen(QtGui.QPen(QtGui.QColor(base.red(), base.green(), base.blue(), int(alpha * 0.9)), 1))
+        painter.drawRoundedRect(r, 6, 6)
+        painter.restore()
+
 
 
 class ExpandingTextEdit(QtWidgets.QTextEdit):
@@ -192,7 +277,14 @@ class MainWindow(QtWidgets.QMainWindow):
         desc_wrap = QtWidgets.QWidget(); desc_wrap.setLayout(desc_row)
         grid.addWidget(desc_wrap, 2, 1)
         grid.addWidget(QtWidgets.QLabel("Qtd Carregamentos (C3)"), 2, 2, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.carregamentos_c3, 2, 3)
+        # Wrap Carregamentos (C3) + botão editor
+        carg_row = QtWidgets.QHBoxLayout(); carg_row.setSpacing(8)
+        self.btn_edit_carg = QtWidgets.QPushButton("Editar Carregamentos C3…")
+        self.btn_edit_carg.clicked.connect(self.on_edit_carregamentos)
+        carg_row.addWidget(self.carregamentos_c3)
+        carg_row.addWidget(self.btn_edit_carg)
+        carg_wrap = QtWidgets.QWidget(); carg_wrap.setLayout(carg_row)
+        grid.addWidget(carg_wrap, 2, 3)
         # Linha 3: Paletes Pendentes | Veículos pendentes (com botão editor)
         veic_row = QtWidgets.QHBoxLayout()
         veic_row.setSpacing(8)
@@ -242,6 +334,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.table.setHorizontalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
         self.table.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
         self.table.doubleClicked.connect(self.on_table_double_click)
+        # Destaque interativo nas colunas com ação de duplo clique
+        self.table.setMouseTracking(True)
+        self._interactive_cols = {5, 6, 7, 9}
+        self._delegate = InteractiveHighlightDelegate(self.table, self._interactive_cols)
+        self.table.setItemDelegate(self._delegate)
+        # Atualiza hover/cursor dinamicamente
+        self.table.viewport().installEventFilter(self)
 
         # Barra de paginação
         pager = QtWidgets.QHBoxLayout()
@@ -322,11 +421,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.veic_repo = VeiculoPendenteRepository(self._session)
         self.desc_repo = VeiculoDescargaC3Repository(self._session)
         self.antec_repo = VeiculoAntecipadoRepository(self._session)
+        self.carg_repo = VeiculoCarregamentoC3Repository(self._session)
 
         # buffers temporários antes de salvar
         self._buffer_veiculos = []  # type: list[tuple[str, int]]
         self._buffer_descargas = []  # type: list[tuple[str, int]]
         self._buffer_antecipados = []  # type: list[tuple[str, int]]
+        self._buffer_carregamentos = []  # type: list[tuple[str, int]]
 
         # Estado de paginação
         self._page_size_val = int(self.page_size.currentText())
@@ -433,6 +534,21 @@ class MainWindow(QtWidgets.QMainWindow):
             header.setStretchLastSection(True)
         finally:
             self._columns_sized = True
+
+    def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:  # type: ignore[override]
+        if obj is self.table.viewport() and event.type() in (QtCore.QEvent.MouseMove, QtCore.QEvent.Leave):
+            if event.type() == QtCore.QEvent.Leave:
+                self._delegate.setHoveredIndex(None)
+                self.table.viewport().setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
+            else:
+                pos = event.pos()  # type: ignore[attr-defined]
+                idx = self.table.indexAt(pos)
+                self._delegate.setHoveredIndex(idx if idx.isValid() else None)
+                if idx.isValid() and idx.column() in self._interactive_cols:
+                    self.table.viewport().setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+                else:
+                    self.table.viewport().setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
+        return super().eventFilter(obj, event)
     def on_page_size_changed(self, text: str) -> None:
         try:
             self._page_size_val = int(text)
@@ -531,6 +647,12 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.antec_repo.add(created.id, veiculo, int(pct))
                 except Exception:
                     pass
+            # Salva veículos de Carregamento C3 vinculados
+            for veiculo, pct in self._buffer_carregamentos:
+                try:
+                    self.carg_repo.add(created.id, veiculo, int(pct))
+                except Exception:
+                    pass
         except Exception as e:  # pragma: no cover
             QtWidgets.QMessageBox.critical(self, "Erro ao salvar", str(e))
             return
@@ -551,6 +673,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._buffer_veiculos = []
         self._buffer_descargas = []
         self._buffer_antecipados = []
+        self._buffer_carregamentos = []
         # Após inserir, volta para a primeira página (mais recentes)
         self._current_page = 1
         self.refresh()
@@ -573,6 +696,12 @@ class MainWindow(QtWidgets.QMainWindow):
         dlg = VeiculosDialog(self, initial=self._buffer_antecipados, read_only=False, title="Veículos Antecipados")
         if dlg.exec() == QtWidgets.QDialog.Accepted:
             self._buffer_antecipados = dlg.get_rows()
+
+    def on_edit_carregamentos(self) -> None:
+        # Abre diálogo para editar veículos de Carregamento C3 no buffer
+        dlg = VeiculosDialog(self, initial=self._buffer_carregamentos, read_only=False, title="Veículos Carregamento C3")
+        if dlg.exec() == QtWidgets.QDialog.Accepted:
+            self._buffer_carregamentos = dlg.get_rows()
 
     def on_table_double_click(self, index: QtCore.QModelIndex) -> None:
         if not index.isValid():
@@ -599,6 +728,13 @@ class MainWindow(QtWidgets.QMainWindow):
             items = self.antec_repo.list_by_metrica(metrica_id)
             initial = [(it.veiculo, int(it.porcentagem)) for it in items]
             dlg = VeiculosDialog(self, initial=initial, read_only=True, title=f"Veículos Antecipados (Métrica {metrica_id})")
+            dlg.exec()
+            return
+        # Carregamentos (C3) coluna 6 (0-based)
+        if col == 6:
+            items = self.carg_repo.list_by_metrica(metrica_id)
+            initial = [(it.veiculo, int(it.porcentagem)) for it in items]
+            dlg = VeiculosDialog(self, initial=initial, read_only=True, title=f"Carregamentos C3 (Métrica {metrica_id})")
             dlg.exec()
 
     def on_delete(self) -> None:

@@ -8,7 +8,12 @@ from datetime import datetime
 
 from ..db.database import get_session
 from datetime import timezone
-from ..db.repository import MetricaRepository, VeiculoPendenteRepository, VeiculoDescargaC3Repository
+from ..db.repository import (
+    MetricaRepository,
+    VeiculoPendenteRepository,
+    VeiculoDescargaC3Repository,
+    VeiculoCarregamentoC3Repository,
+)
 
 
 def _json_response(handler: BaseHTTPRequestHandler, status: int, payload: dict | list) -> None:
@@ -127,6 +132,22 @@ class ApiHandler(BaseHTTPRequestHandler):
             try:
                 drepo = VeiculoDescargaC3Repository(session)
                 rows = drepo.list_by_metrica(metrica_id)
+                items = [{"veiculo": r.veiculo, "porcentagem": int(r.porcentagem)} for r in rows]
+                return _json_response(self, 200, {"items": items})
+            finally:
+                session.close()
+
+        if path.startswith("/api/metricas/") and path.endswith("/carregamentos-c3"):
+            parts = path.split("/")
+            try:
+                metrica_id = int(parts[3])
+            except Exception:
+                return _json_response(self, 400, {"error": "id inválido"})
+            cm = get_session()
+            session = next(cm)
+            try:
+                crepo = VeiculoCarregamentoC3Repository(session)
+                rows = crepo.list_by_metrica(metrica_id)
                 items = [{"veiculo": r.veiculo, "porcentagem": int(r.porcentagem)} for r in rows]
                 return _json_response(self, 200, {"items": items})
             finally:

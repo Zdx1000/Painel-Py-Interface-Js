@@ -4,7 +4,7 @@ from typing import Sequence
 from sqlalchemy import select, delete, func
 from sqlalchemy.orm import Session
 
-from .models import Metrica, VeiculoPendente, VeiculoDescargaC3, VeiculoAntecipado
+from .models import Metrica, VeiculoPendente, VeiculoDescargaC3, VeiculoAntecipado, VeiculoCarregamentoC3
 
 
 
@@ -67,6 +67,7 @@ class MetricaRepository:
         self.session.execute(delete(VeiculoPendente).where(VeiculoPendente.metrica_id == metrica_id))
         self.session.execute(delete(VeiculoDescargaC3).where(VeiculoDescargaC3.metrica_id == metrica_id))
         self.session.execute(delete(VeiculoAntecipado).where(VeiculoAntecipado.metrica_id == metrica_id))
+        self.session.execute(delete(VeiculoCarregamentoC3).where(VeiculoCarregamentoC3.metrica_id == metrica_id))
         self.session.delete(m)
         self.session.commit()
         return True
@@ -145,6 +146,34 @@ class VeiculoAntecipadoRepository:
 
     def delete(self, item_id: int) -> bool:
         v = self.session.get(VeiculoAntecipado, item_id)
+        if not v:
+            return False
+        self.session.delete(v)
+        self.session.commit()
+        return True
+
+
+class VeiculoCarregamentoC3Repository:
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def add(self, metrica_id: int, veiculo: str, porcentagem: int) -> VeiculoCarregamentoC3:
+        v = VeiculoCarregamentoC3(metrica_id=metrica_id, veiculo=veiculo, porcentagem=porcentagem)
+        self.session.add(v)
+        self.session.commit()
+        self.session.refresh(v)
+        return v
+
+    def list_by_metrica(self, metrica_id: int):
+        stmt = (
+            select(VeiculoCarregamentoC3)
+            .where(VeiculoCarregamentoC3.metrica_id == metrica_id)
+            .order_by(VeiculoCarregamentoC3.criado_em.desc())
+        )
+        return list(self.session.execute(stmt).scalars().all())
+
+    def delete(self, item_id: int) -> bool:
+        v = self.session.get(VeiculoCarregamentoC3, item_id)
         if not v:
             return False
         self.session.delete(v)
