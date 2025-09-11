@@ -7,12 +7,20 @@ from urllib.parse import urlparse, parse_qs
 from datetime import datetime
 
 from ..db.database import get_session
-from datetime import timezone
+from datetime import timezone, timedelta
 from ..db.repository import (
     MetricaRepository,
     VeiculoPendenteRepository,
     VeiculoDescargaC3Repository,
     VeiculoCarregamentoC3Repository,
+)
+from sqlalchemy import select
+from ..db.models import (
+    Metrica,
+    VeiculoPendente,
+    VeiculoDescargaC3,
+    VeiculoAntecipado,
+    VeiculoCarregamentoC3,
 )
 
 
@@ -102,6 +110,110 @@ class ApiHandler(BaseHTTPRequestHandler):
                     "total_pages": total_pages,
                     "items": items,
                 })
+            finally:
+                session.close()
+
+        if path == "/api/dia":
+            qs = parse_qs(parsed.query or "")
+            date_str = (qs.get("date", [""])[0] or "").strip()
+            if not date_str:
+                return _json_response(self, 400, {"error": "parâmetro 'date' obrigatório (YYYY-MM-DD)"})
+            try:
+                # Data base local São Paulo
+                from zoneinfo import ZoneInfo
+                tz_sp = ZoneInfo("America/Sao_Paulo")
+                y, m, d = [int(x) for x in date_str.split("-")]
+                start_sp = datetime(y, m, d, 0, 0, 0, tzinfo=tz_sp)
+                end_sp = datetime(y, m, d, 23, 59, 59, 999000, tzinfo=tz_sp)
+                start_utc = start_sp.astimezone(timezone.utc).replace(tzinfo=None)
+                end_utc = end_sp.astimezone(timezone.utc).replace(tzinfo=None)
+            except Exception:
+                # Fallback: assume UTC com margem de 3h (simplificado)
+                try:
+                    y, m, d = [int(x) for x in date_str.split("-")]
+                    start_utc = datetime(y, m, d, 3, 0, 0)  # 00:00 SP -> 03:00 UTC
+                    end_utc = start_utc + timedelta(hours=23, minutes=59, seconds=59)  # até 02:59:59 do dia seguinte UTC
+                except Exception:
+                    return _json_response(self, 400, {"error": "data inválida, use YYYY-MM-DD"})
+
+            cm = get_session()
+            session = next(cm)
+            try:
+                # Buscar metricas no intervalo
+                rows = session.execute(
+                    select(Metrica).where(Metrica.criado_em >= start_utc, Metrica.criado_em <= end_utc)
+                ).scalars().all()
+                if not rows:
+                    return _json_response(self, 200, {
+                        "date": date_str,
+                        "totals": {
+                            "paletes_agendados": 0,
+                            "paletes_produzidos": 0,
+                            "total_fichas": 0,
+                            "fichas_finalizadas": 0,
+                            "descargas_c3": 0,
+                            "carregamentos_c3": 0,
+                            "paletes_pendentes": 0,
+                            "veiculos_pendentes": 0,
+                            "fichas_antecipadas": 0,
+                        },
+                        "observacoes": [],
+                        "descargas_c3": {"qtd": 0, "itens": []},
+                        "carregamentos_c3": {"qtd": 0, "itens": []},
+                        "veiculos_pendentes": {"qtd": 0, "itens": []},
+                        "antecipados": {"qtd": 0, "itens": []},
+                    })
+
+                ids = [m.id for m in rows]
+                totals = {
+                    "paletes_agendados": sum(m.paletes_agendados for m in rows),
+                    "paletes_produzidos": sum(m.paletes_produzidos for m in rows),
+                    "total_fichas": sum(m.total_veiculos for m in rows),
+                    "fichas_finalizadas": sum(m.veiculos_finalizados for m in rows),
+                    "descargas_c3": sum(m.descargas_c3 for m in rows),
+                    "carregamentos_c3": sum(m.carregamentos_c3 for m in rows),
+                    "paletes_pendentes": sum(m.paletes_pendentes for m in rows),
+                    "veiculos_pendentes": sum(m.veiculos_pendentes for m in rows),
+                    "fichas_antecipadas": sum(getattr(m, "fichas_antecipadas", 0) for m in rows),
+                }
+                observacoes = [m.observacao for m in rows if getattr(m, "observacao", None)]
+
+                # Carregar listas relacionadas do dia (com base nos ids)
+                vp = session.execute(
+                    select(VeiculoPendente).where(VeiculoPendente.metrica_id.in_(ids))
+                ).scalars().all()
+                vd = session.execute(
+                    select(VeiculoDescargaC3).where(VeiculoDescargaC3.metrica_id.in_(ids))
+                ).scalars().all()
+                va = session.execute(
+                    select(VeiculoAntecipado).where(VeiculoAntecipado.metrica_id.in_(ids))
+                ).scalars().all()
+                vc = session.execute(
+                    select(VeiculoCarregamentoC3).where(VeiculoCarregamentoC3.metrica_id.in_(ids))
+                ).scalars().all()
+
+                payload = {
+                    "date": date_str,
+                    "totals": totals,
+                    "observacoes": observacoes,
+                    "descargas_c3": {
+                        "qtd": totals["descargas_c3"],
+                        "itens": [{"metrica_id": x.metrica_id, "veiculo": x.veiculo, "porcentagem": int(x.porcentagem)} for x in vd],
+                    },
+                    "carregamentos_c3": {
+                        "qtd": totals["carregamentos_c3"],
+                        "itens": [{"metrica_id": x.metrica_id, "veiculo": x.veiculo, "porcentagem": int(x.porcentagem)} for x in vc],
+                    },
+                    "veiculos_pendentes": {
+                        "qtd": totals["veiculos_pendentes"],
+                        "itens": [{"metrica_id": x.metrica_id, "veiculo": x.veiculo, "porcentagem": int(x.porcentagem)} for x in vp],
+                    },
+                    "antecipados": {
+                        "qtd": totals["fichas_antecipadas"],
+                        "itens": [{"metrica_id": x.metrica_id, "veiculo": x.veiculo, "porcentagem": int(x.porcentagem)} for x in va],
+                    },
+                }
+                return _json_response(self, 200, payload)
             finally:
                 session.close()
 
