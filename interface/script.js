@@ -76,7 +76,7 @@ async function carregarDia(){
 	const [y,m,d] = val.split("-");
 	const titleEl = document.getElementById("pageTitle");
 	if(titleEl){
-		titleEl.textContent = `Apresentação diária — Recebimento Martins (${d}/${m}/${y})`;
+		titleEl.textContent = `Apresentação diária — Recebimento CAD UDI (${d}/${m}/${y})`;
 	}
 	try{
 		const data = await fetchDia(val);
