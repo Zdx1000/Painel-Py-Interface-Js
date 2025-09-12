@@ -1,3 +1,21 @@
+/* Barra extra vermelha para Pendentes (id específico) */
+#fichas_extra_fill {
+	background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%) !important;
+	box-shadow: 0 2px 8px rgba(239,68,68,0.3), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+}
+
+.bar-red {
+	background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%) !important;
+	box-shadow: 0 2px 8px rgba(239,68,68,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.bar-yellow {
+	background: linear-gradient(90deg, #facc15 0%, #f59e42 100%) !important;
+	box-shadow: 0 2px 8px rgba(250,204,21,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.bar-green {
+	background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%) !important;
+	box-shadow: 0 2px 8px rgba(34,197,94,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+}
 :root{
 	--bg:#0d1117;--panel:#0f1522;--text:#e6eef5;--muted:#9aa8bd;--accent:#1d4ed8;--border:#223047
 }

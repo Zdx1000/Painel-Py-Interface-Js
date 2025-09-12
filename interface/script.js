@@ -121,7 +121,17 @@ async function carregarDia(){
 		setText("prog_done", feitoRaw);
 	setText("prog_pct", pct);
 	const bar = document.getElementById("prog_fill");
-	if(bar) bar.style.width = pct + "%";
+	if(bar) {
+		bar.style.width = pct + "%";
+		bar.classList.remove("bar-red", "bar-yellow", "bar-green");
+		if(pct <= 70){
+			bar.classList.add("bar-red");
+		}else if(pct <= 90){
+			bar.classList.add("bar-yellow");
+		}else{
+			bar.classList.add("bar-green");
+		}
+	}
 
 		// Extra quando produziu acima do agendado
 		const extraBlock = document.getElementById("extra_block");
@@ -216,7 +226,17 @@ async function carregarDia(){
 		setText("fichas_done", fichasFeitasRaw);
 		setText("fichas_pct", fichasPct);
 		const fichasBar = document.getElementById("fichas_fill");
-		if(fichasBar) fichasBar.style.width = fichasPct + "%";
+		if(fichasBar) {
+			fichasBar.style.width = fichasPct + "%";
+			fichasBar.classList.remove("bar-red", "bar-yellow", "bar-green");
+			if(fichasPct <= 70){
+				fichasBar.classList.add("bar-red");
+			}else if(fichasPct <= 90){
+				fichasBar.classList.add("bar-yellow");
+			}else{
+				fichasBar.classList.add("bar-green");
+			}
+		}
 		const fichasExtraBlock = document.getElementById("fichas_extra_block");
 		if(fichasExtraBlock){
 			const pend = Math.max(0, parseInt(t.paletes_pendentes||0,10));
