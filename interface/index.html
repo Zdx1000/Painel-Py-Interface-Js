@@ -13,11 +13,12 @@
 </head>
 <body>
 	<header class="top daily">
-		<h1>Apresentação diária — Recebimento Martins</h1>
+		<h1 id="pageTitle">Apresentação diária — Recebimento Martins</h1>
 		<div class="controls">
 			<label for="datePick">Selecione o dia</label>
 			<input id="datePick" type="date" />
 			<button id="loadDay">Carregar</button>
+			<button id="editObs" type="button">Editar Observação</button>
 		</div>
 	</header>
 	<main>
@@ -64,6 +65,25 @@
 					<div class="progressWrap extra"><div class="progressFill extra" id="prog_extra_fill" style="width:0%"></div></div>
 				</div>
 			</div>
+
+			<!-- Card de Progresso das Fichas (ocupa 2 colunas) -->
+			<div class="card card-progress card-progress-3">
+				<h3>Progresso do dia (Fichas)</h3>
+				<p class="muted">Total = Total de fichas; Finalizadas = Fichas finalizadas; Extra = Paletes Pendentes</p>
+				<div class="progressRow">
+					<span class="label">Finalizadas</span>
+					<span class="numbers"><span id="fichas_done">0</span>/<span id="fichas_total">0</span> (<span id="fichas_pct">0</span>%)</span>
+				</div>
+				<div class="progressWrap"><div class="progressFill" id="fichas_fill" style="width:0%"></div></div>
+				<div class="extra" id="fichas_extra_block" style="display:none">
+					<div class="progressRow">
+						<span class="label">Pendentes</span>
+						<span class="numbers"><span id="fichas_extra_pct">0</span>%</span>
+					</div>
+					<div class="progressWrap extra"><div class="progressFill extra" id="fichas_extra_fill" style="width:0%"></div></div>
+				</div>
+			</div>
+
 		</section>
 		<section class="lists">
 			<div class="list">
@@ -78,6 +98,31 @@
 				<div class="value" id="v_carr_qtd">0</div>
 				<ul id="list_carreg"></ul>
 			</div>
+			<!-- Comparativo imediatamente abaixo de Descargas x Carregamentos -->
+			<div class="list list-dual">
+				<h3>Comparativo do dia (Descargas x Carregamentos)</h3>
+				<div class="dualBox">
+					<div class="dualLeft">
+						<div class="dualRow">
+							<span class="label">Descargas (C3)</span>
+							<span class="numbers" id="dual_dc_val_a">0</span>
+						</div>
+						<div class="dualWrap"><div class="dualFill a" id="dual_dc_fill_a" style="width:0%"></div></div>
+						<div class="dualRow">
+							<span class="label">Carregamentos (C3)</span>
+							<span class="numbers" id="dual_dc_val_b">0</span>
+						</div>
+						<div class="dualWrap"><div class="dualFill b" id="dual_dc_fill_b" style="width:0%"></div></div>
+					</div>
+					<div class="dualRight">
+						<div class="donut" id="donut_dc" aria-label="Donut Descargas x Carregamentos">
+							<div class="donutHole">
+								<div class="donutLabel"><span id="donut_dc_a">0</span>/<span id="donut_dc_b">0</span></div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
 			<div class="list">
 				<h3>Veículos pendentes</h3>
 				<p class="muted">Quantidade de Veículos pendentes e sua porcentagem</p>
@@ -90,10 +135,78 @@
 				<div class="value" id="v_antec_qtd">0</div>
 				<ul id="list_antec"></ul>
 			</div>
+			<!-- Comparativo imediatamente abaixo de Veículos pendentes x Fichas antecipadas -->
+			<div class="list list-dual">
+				<h3>Comparativo do dia (Veículos pendentes x Fichas antecipadas)</h3>
+				<div class="dualBox">
+					<div class="dualLeft">
+						<div class="dualRow">
+							<span class="label">Veículos pendentes</span>
+							<span class="numbers" id="dual_vp_val_a">0</span>
+						</div>
+						<div class="dualWrap"><div class="dualFill c" id="dual_vp_fill_a" style="width:0%"></div></div>
+						<div class="dualRow">
+							<span class="label">Fichas antecipadas</span>
+							<span class="numbers" id="dual_vp_val_b">0</span>
+						</div>
+						<div class="dualWrap"><div class="dualFill d" id="dual_vp_fill_b" style="width:0%"></div></div>
+					</div>
+					<div class="dualRight">
+						<div class="donut" id="donut_vp" aria-label="Donut Veículos pendentes x Fichas antecipadas">
+							<div class="donutHole">
+								<div class="donutLabel"><span id="donut_vp_a">0</span>/<span id="donut_vp_b">0</span></div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
 		</section>
 		<section class="obs">
 			<h3>Observação</h3>
 			<p class="muted">Que e a observação diária sobre a produção</p>
+			<div id="obs_editor" class="obsEditor" style="display:none">
+				<div id="obs_toolbar" class="rteToolbar">
+					<button type="button" data-cmd="bold"><strong>N</strong></button>
+					<button type="button" data-cmd="italic"><em>I</em></button>
+					<button type="button" data-cmd="underline"><u>S</u></button>
+					<span class="sep"></span>
+					<button type="button" data-cmd="formatBlock" data-val="H3">Título</button>
+					<button type="button" data-cmd="formatBlock" data-val="P">Parágrafo</button>
+					<button type="button" data-cmd="insertUnorderedList">Lista •</button>
+					<button type="button" data-cmd="insertOrderedList">Lista 1.</button>
+					<span class="sep"></span>
+					<label class="small">Cor <input type="color" id="rte_color" /></label>
+					<label class="small">Fundo <input type="color" id="rte_bg" /></label>
+					<select id="rte_font" title="Fonte">
+						<option value="">Fonte</option>
+						<option>Segoe UI</option>
+						<option>Roboto</option>
+						<option>Arial</option>
+						<option>Georgia</option>
+						<option>Courier New</option>
+					</select>
+					<select id="rte_size" title="Tamanho">
+						<option value="">Tam</option>
+						<option value="12">12</option>
+						<option value="14">14</option>
+						<option value="16">16</option>
+						<option value="18">18</option>
+						<option value="20">20</option>
+						<option value="24">24</option>
+					</select>
+					<span class="sep"></span>
+					<button type="button" data-cmd="justifyLeft">⟸</button>
+					<button type="button" data-cmd="justifyCenter">⟺</button>
+					<button type="button" data-cmd="justifyRight">⟹</button>
+					<span class="sep"></span>
+					<button type="button" id="rte_clear">Limpar</button>
+				</div>
+				<div id="obs_rte" class="rteArea" contenteditable="true" spellcheck="false"></div>
+				<div class="row">
+					<button id="obs_save" type="button">Salvar</button>
+					<button id="obs_cancel" type="button">Cancelar</button>
+				</div>
+			</div>
 			<div id="obs_list"></div>
 		</section>
 	</main>

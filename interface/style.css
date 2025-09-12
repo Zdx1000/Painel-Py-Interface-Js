@@ -30,6 +30,33 @@ main{padding:16px}
 .card .muted{margin:0 0 10px 0;color:var(--muted);font-size:12px}
 .card .value{font-size:26px;font-weight:800;color:#ffffff}
 .card-progress{grid-column:span 2}
+.card-progress-3{grid-column:span 3}
+.card-dual{grid-column:span 2}
+.dualRow{display:flex;justify-content:space-between;align-items:center;margin-top:6px;margin-bottom:6px}
+.dualWrap{position:relative;height:12px;background:#15223a;border:1px solid #1b2b48;border-radius:8px;overflow:hidden;margin-bottom:8px}
+.dualFill{position:absolute;left:0;top:0;bottom:0}
+.dualFill.a{background:linear-gradient(90deg,#1d4ed8,#2563eb)}
+.dualFill.b{background:linear-gradient(90deg,#3b82f6,#60a5fa)}
+.dualFill.c{background:linear-gradient(90deg,#1d4ed8,#2563eb)}
+.dualFill.d{background:linear-gradient(90deg,#3b82f6,#60a5fa)}
+.dualBox{display:grid;grid-template-columns:1fr 160px;gap:16px;align-items:center}
+.dualLeft{min-width:0}
+.dualRight{display:flex;flex-direction:column;align-items:center;gap:8px}
+.donut{width:140px;height:140px;border-radius:50%;background:
+	conic-gradient(#1d4ed8 var(--angA,0deg), #60a5fa 0);
+	/* A parte restante fica na segunda cor */
+	position:relative;border:1px solid #1b2b48}
+.donutHole{position:absolute;inset:14px;border-radius:50%;background:var(--panel);display:flex;align-items:center;justify-content:center;border:1px solid #1b2b48}
+.donutLabel{font-weight:800;color:#ffffff}
+.donutLegend{font-size:12px;color:var(--muted)}
+.donutLegend .dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.donutLegend .dot.a{background:#60a5fa}
+.donutLegend .dot.b{background:#34d399}
+
+@media (max-width:900px){
+	.dualBox{grid-template-columns:1fr}
+	.dualRight{align-items:flex-start}
+}
 .card-progress .progressRow{display:flex;justify-content:space-between;align-items:center;margin-top:6px;margin-bottom:8px}
 .card-progress .numbers{color:#cfe0ff;font-weight:700}
 .progressWrap{position:relative;height:14px;background:#15223a;border:1px solid #1b2b48;border-radius:8px;overflow:hidden}
@@ -37,6 +64,7 @@ main{padding:16px}
 .progressWrap.extra{height:10px;margin-top:6px}
 .progressFill.extra{background:linear-gradient(90deg,#f59e0b,#d97706)}
 .list{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px}
+.list-dual{grid-column:span 2}
 .list h3{margin:0 0 6px 0}
 .list .muted{margin:0 0 10px 0;color:var(--muted);font-size:12px}
 .list .value{font-size:18px;font-weight:700;margin-bottom:8px}
@@ -53,4 +81,16 @@ main{padding:16px}
 .obs h3{margin:0 0 6px 0}
 .obs .muted{margin:0 0 10px 0;color:var(--muted);font-size:12px}
 .obsItem{padding:8px 10px;background:#101827;border-radius:8px;border:1px solid #1b2b48;margin-bottom:8px}
+
+/* Editor de Observação (visual) */
+.obsEditor{margin-bottom:10px;background:#101827;border:1px solid #1b2b48;border-radius:8px;padding:10px}
+.rteToolbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.rteToolbar button, .rteToolbar select, .rteToolbar input[type=color]{background:#0f1522;color:var(--text);border:1px solid #24324a;border-radius:6px;padding:6px 8px;cursor:pointer}
+.rteToolbar input[type=color]{padding:0;width:36px;height:28px}
+.rteToolbar .small{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.rteToolbar .sep{width:1px;height:20px;background:#24324a;margin:0 4px}
+.rteArea{width:100%;min-height:140px;background:#0f1522;color:var(--text);border:1px solid #24324a;border-radius:6px;padding:10px}
+.obsEditor .row{margin-top:8px;display:flex;gap:8px}
+.obsEditor button{background:var(--accent);color:#fff;border:1px solid #163a8a;border-radius:6px;padding:6px 10px;cursor:pointer}
+.obsEditor button#obs_cancel{background:#374151;border-color:#2b3442}
 
