@@ -98,7 +98,7 @@ async function carregarDia(){
 			const dItems = (data.descargas_c3 && data.descargas_c3.itens) || [];
 			const sumDesc = dItems.reduce((acc, it) => acc + (parseInt(it.quantidade,10)||0), 0);
 			const elSD = document.getElementById('sum_desc_qtd');
-			if(elSD) elSD.textContent = `Total de Descargas C3: ${sumDesc}`;
+			if(elSD) elSD.textContent = `Total de paletes Descarregado C3: ${sumDesc}`;
 		} catch {}
 
 		setText("v_carr_qtd", (data.carregamentos_c3 && data.carregamentos_c3.qtd) ?? 0);
@@ -108,7 +108,7 @@ async function carregarDia(){
 			const cItems = (data.carregamentos_c3 && data.carregamentos_c3.itens) || [];
 			const sumCarr = cItems.reduce((acc, it) => acc + (parseInt(it.quantidade,10)||0), 0);
 			const elSC = document.getElementById('sum_carr_qtd');
-			if(elSC) elSC.textContent = `Total de Carregamentos C3: ${sumCarr}`;
+			if(elSC) elSC.textContent = `Total de paletes Carregados C3: ${sumCarr}`;
 		} catch {}
 
 		setText("v_pend_qtd", (data.veiculos_pendentes && data.veiculos_pendentes.qtd) ?? 0);
@@ -129,7 +129,7 @@ async function carregarDia(){
 		const aItems = (data.antecipados && data.antecipados.itens) || [];
 		const sumAnt = aItems.reduce((acc, it) => acc + (parseInt(it.quantidade,10)||0), 0);
 		const elSA = document.getElementById('sum_antec_qtd');
-		if(elSA) elSA.textContent = `Total de Fichas: ${sumAnt}`;
+		if(elSA) elSA.textContent = `Total de Paletes: ${sumAnt}`;
 	} catch {}
 
 		// Observações: prioriza edição visual se existir para a data
