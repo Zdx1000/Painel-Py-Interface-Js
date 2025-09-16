@@ -1,5 +1,8 @@
 from __future__ import annotations
 from pathlib import Path
+import os
+import shutil
+import sys
 from typing import Generator
 
 from sqlalchemy import create_engine, text
@@ -9,10 +12,27 @@ from .models import Base
 
 
 
-DB_DIR = Path(__file__).resolve().parent.parent / "data"
-DB_DIR.mkdir(parents=True, exist_ok=True)
-DB_PATH = DB_DIR / "app.db"
-DATABASE_URL = f"sqlite:///{DB_PATH}"
+def _get_executable_dir() -> Path:
+    """Retorna o diretório do executável (EXE ou script principal)."""
+    if getattr(sys, 'frozen', False):
+        # PyInstaller/auto-py-to-exe
+        return Path(sys.executable).parent
+    else:
+        # Script Python normal
+        return Path(__file__).resolve().parent.parent.parent
+
+EXE_DIR = _get_executable_dir()
+DB_PATH = EXE_DIR / "app.db"
+
+# Migração: se existir banco antigo em app/data/app.db e não existir no novo local, mover
+try:
+    old_path = Path(__file__).resolve().parent.parent / "data" / "app.db"
+    if old_path.exists() and not DB_PATH.exists():
+        shutil.copy2(old_path, DB_PATH)
+except Exception:
+    pass
+
+DATABASE_URL = f"sqlite:///{DB_PATH}"  # usa banco no diretório do executável
 
 engine = create_engine(
     DATABASE_URL,

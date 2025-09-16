@@ -189,7 +189,16 @@ class ExpandingTextEdit(QtWidgets.QTextEdit):
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("Métricas de Operação")
+        # Ícone e título da janela
+        self.setWindowTitle("🧠 Métricas de Operação")
+        try:
+            # Caso queira usar um arquivo de ícone futuramente coloque em assets/icon.png
+            from pathlib import Path as _P
+            icon_path = _P(__file__).resolve().parents[2] / "assets" / "icon.png"
+            if icon_path.exists():
+                self.setWindowIcon(QtGui.QIcon(str(icon_path)))
+        except Exception:
+            pass
         self.resize(1200, 720)
         self.setStyleSheet(DARK_QSS)
 
@@ -405,10 +414,9 @@ class MainWindow(QtWidgets.QMainWindow):
         header_layout = QtWidgets.QHBoxLayout(header_container)
         header_layout.setContentsMargins(20, 12, 20, 12)
         header_layout.setSpacing(8)
-        header = QtWidgets.QLabel("Controle de registro Recebimento [ Banco de dados ]")
+        header = QtWidgets.QLabel("<span style='font-size:15px;'>🧠 Controle de registro Recebimento <strong>[ Banco de dados ]</strong></span>")
         header.setObjectName("appTitle")
         header.setAlignment(QtCore.Qt.AlignCenter)
-        # Botão de gráfico (à direita)
         btn_grafico = QtWidgets.QPushButton("Gráfico apresentação")
         btn_grafico.setObjectName("headerBtn")
         btn_grafico.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
@@ -421,12 +429,10 @@ class MainWindow(QtWidgets.QMainWindow):
             btn_grafico.setIcon(icon)
         except Exception:
             pass
-        # Layout: stretch | título | stretch | botão
         header_layout.addStretch(1)
         header_layout.addWidget(header, 0, QtCore.Qt.AlignCenter)
         header_layout.addStretch(1)
         header_layout.addWidget(btn_grafico, 0, QtCore.Qt.AlignRight)
-        # Adiciona centralizado; a largura será ajustada para ~95% no resizeEvent
         lay.addWidget(header_container, alignment=QtCore.Qt.AlignHCenter)
         self._header_container = header_container
         lay.addWidget(top_w)
