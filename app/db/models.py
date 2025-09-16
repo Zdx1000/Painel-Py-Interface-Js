@@ -44,6 +44,7 @@ class VeiculoPendente(Base):
     metrica_id: Mapped[int] = mapped_column(Integer, ForeignKey("metricas.id", ondelete="CASCADE"), index=True, nullable=False)
     veiculo: Mapped[str] = mapped_column(String(200), nullable=False)
     porcentagem: Mapped[int] = mapped_column(Integer, nullable=False)
+    quantidade: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     def __repr__(self) -> str:  # pragma: no cover
@@ -57,6 +58,7 @@ class VeiculoDescargaC3(Base):
     metrica_id: Mapped[int] = mapped_column(Integer, ForeignKey("metricas.id", ondelete="CASCADE"), index=True, nullable=False)
     veiculo: Mapped[str] = mapped_column(String(200), nullable=False)
     porcentagem: Mapped[int] = mapped_column(Integer, nullable=False)
+    quantidade: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     def __repr__(self) -> str:  # pragma: no cover
@@ -70,6 +72,7 @@ class VeiculoAntecipado(Base):
     metrica_id: Mapped[int] = mapped_column(Integer, ForeignKey("metricas.id", ondelete="CASCADE"), index=True, nullable=False)
     veiculo: Mapped[str] = mapped_column(String(200), nullable=False)
     porcentagem: Mapped[int] = mapped_column(Integer, nullable=False)
+    quantidade: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     def __repr__(self) -> str:  # pragma: no cover
@@ -83,6 +86,7 @@ class VeiculoCarregamentoC3(Base):
     metrica_id: Mapped[int] = mapped_column(Integer, ForeignKey("metricas.id", ondelete="CASCADE"), index=True, nullable=False)
     veiculo: Mapped[str] = mapped_column(String(200), nullable=False)
     porcentagem: Mapped[int] = mapped_column(Integer, nullable=False)
+    quantidade: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     def __repr__(self) -> str:  # pragma: no cover

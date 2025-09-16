@@ -229,6 +229,11 @@ class MainWindow(QtWidgets.QMainWindow):
         # Botão Exportar
         self.btn_export = QtWidgets.QPushButton("Exportar")
         self.btn_export.clicked.connect(self.on_export)
+        # Campo de data de referência para inserir métricas em dias passados/futuros
+        self.date_ref = QtWidgets.QDateEdit(QtCore.QDate.currentDate())
+        self.date_ref.setCalendarPopup(True)
+        self.date_ref.setDisplayFormat("dd/MM/yyyy")
+        self.date_ref.setToolTip("Data que representa estas métricas ao clicar em Adicionar")
 
         # Alturas mínimas para controles
         for w in (
@@ -247,6 +252,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.btn_export,
         ):
             w.setMinimumHeight(34)
+        self.date_ref.setMinimumHeight(34)
         # Altura mínima para o campo de observação já é controlada pela classe
 
         form = QtWidgets.QWidget()
@@ -316,6 +322,28 @@ class MainWindow(QtWidgets.QMainWindow):
         buttons.addWidget(self.btn_add)
         buttons.addWidget(self.btn_del)
         buttons.addWidget(self.btn_export)
+        # Label estilizado + seletor de data (melhora visual simples)
+        self.lbl_data_ref = QtWidgets.QLabel("Data referência")
+        self.lbl_data_ref.setObjectName("dataRefLabel")
+        self.lbl_data_ref.setAlignment(QtCore.Qt.AlignCenter)
+        # Estilo inline simples para destacar discretamente o título do campo de data
+        self.lbl_data_ref.setStyleSheet(
+            """
+            #dataRefLabel {
+                padding:4px 10px;
+                background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 #0f1522, stop:1 #1a2b45);
+                border:1px solid rgba(29,78,216,0.55);
+                border-radius:6px;
+                color:#93c5fd;
+                font-weight:600;
+                font-size:13px;
+                letter-spacing:0.5px;
+            }
+            #dataRefLabel:hover { border-color: rgba(96,165,250,0.8); }
+            """
+        )
+        buttons.addWidget(self.lbl_data_ref)
+        buttons.addWidget(self.date_ref)
         buttons.addStretch(1)
         bwrap = QtWidgets.QWidget(); bwrap.setLayout(buttons)
         top.addWidget(bwrap)
@@ -423,11 +451,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.antec_repo = VeiculoAntecipadoRepository(self._session)
         self.carg_repo = VeiculoCarregamentoC3Repository(self._session)
 
-        # buffers temporários antes de salvar
-        self._buffer_veiculos = []  # type: list[tuple[str, int]]
-        self._buffer_descargas = []  # type: list[tuple[str, int]]
-        self._buffer_antecipados = []  # type: list[tuple[str, int]]
-        self._buffer_carregamentos = []  # type: list[tuple[str, int]]
+        # buffers temporários antes de salvar (veiculo, quantidade, porcentagem)
+        self._buffer_veiculos = []  # type: list[tuple[str, int, int]]
+        self._buffer_descargas = []  # type: list[tuple[str, int, int]]
+        self._buffer_antecipados = []  # type: list[tuple[str, int, int]]
+        self._buffer_carregamentos = []  # type: list[tuple[str, int, int]]
 
         # Estado de paginação
         self._page_size_val = int(self.page_size.currentText())
@@ -487,19 +515,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
         rows = []
         for m in self.repo.list_page(limit=per_page, offset=offset):
-            # Converte criado_em (UTC) para America/Sao_Paulo
+            # Agora criado_em já está salvo como data referência (midnight) ou horário real local
             try:
-                from zoneinfo import ZoneInfo  # Python 3.9+
                 dt = m.criado_em
-                if getattr(dt, "tzinfo", None) is None:
-                    dt = dt.replace(tzinfo=timezone.utc)
-                dt_sp = dt.astimezone(ZoneInfo("America/Sao_Paulo"))
-                criado_fmt = dt_sp.strftime("%d/%m/%Y %H:%M")
+                if dt.hour == 0 and dt.minute == 0 and dt.second == 0:
+                    criado_fmt = dt.strftime("%d/%m/%Y")
+                else:
+                    criado_fmt = dt.strftime("%d/%m/%Y %H:%M")
             except Exception:
-                try:
-                    criado_fmt = (m.criado_em - timedelta(hours=3)).strftime("%d/%m/%Y %H:%M")
-                except Exception:
-                    criado_fmt = str(m.criado_em)
+                criado_fmt = str(m.criado_em)
             rows.append(
                 (
                     m.id,
@@ -615,6 +639,12 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, "Dados inválidos", "\n".join([e['msg'] for e in ve.errors()]))
             return
 
+        # Define criado_em exatamente como a Data referência (00:00 local) sem converter para UTC
+        # Assim o valor armazenado no banco corresponde 1:1 ao dia escolhido.
+        from datetime import datetime
+        qd = self.date_ref.date()
+        criado_em = datetime(qd.year(), qd.month(), qd.day(), 0, 0, 0)
+
         try:
             created = self.repo.add(
                 paletes_agendados=payload.paletes_agendados,
@@ -627,30 +657,31 @@ class MainWindow(QtWidgets.QMainWindow):
                 carregamentos_c3=payload.carregamentos_c3,
                 veiculos_pendentes=payload.veiculos_pendentes,
                 paletes_pendentes=payload.paletes_pendentes,
+                criado_em=criado_em,
             )
-            # Salva veículos pendentes vinculados à métrica criada
-            for veiculo, pct in self._buffer_veiculos:
+            # Salva veículos pendentes vinculados à métrica criada (agora com quantidade)
+            for veiculo, qtd, pct in self._buffer_veiculos:
                 try:
-                    self.veic_repo.add(created.id, veiculo, int(pct))
+                    self.veic_repo.add(created.id, veiculo, int(pct), quantidade=int(qtd))
                 except Exception:
                     # continua, mas informa depois
                     pass
             # Salva veículos de Descarga C3 vinculados
-            for veiculo, pct in self._buffer_descargas:
+            for veiculo, qtd, pct in self._buffer_descargas:
                 try:
-                    self.desc_repo.add(created.id, veiculo, int(pct))
+                    self.desc_repo.add(created.id, veiculo, int(pct), quantidade=int(qtd))
                 except Exception:
                     pass
-            # Salva veículos antecipados vinculados
-            for veiculo, pct in self._buffer_antecipados:
+            # Salva veículos antecipados vinculados (agora com quantidade)
+            for veiculo, qtd, pct in self._buffer_antecipados:
                 try:
-                    self.antec_repo.add(created.id, veiculo, int(pct))
+                    self.antec_repo.add(created.id, veiculo, int(pct), quantidade=int(qtd))
                 except Exception:
                     pass
             # Salva veículos de Carregamento C3 vinculados
-            for veiculo, pct in self._buffer_carregamentos:
+            for veiculo, qtd, pct in self._buffer_carregamentos:
                 try:
-                    self.carg_repo.add(created.id, veiculo, int(pct))
+                    self.carg_repo.add(created.id, veiculo, int(pct), quantidade=int(qtd))
                 except Exception:
                     pass
         except Exception as e:  # pragma: no cover
@@ -679,10 +710,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.refresh()
 
     def on_edit_veiculos(self) -> None:
-        # Abre o diálogo de edição para preencher veículos pendentes no buffer
+        # Abre o diálogo de edição para preencher veículos pendentes no buffer (mantendo quantidade)
         dlg = VeiculosDialog(self, initial=self._buffer_veiculos, read_only=False, title="Editar Veículos Pendentes")
         if dlg.exec() == QtWidgets.QDialog.Accepted:
-            self._buffer_veiculos = dlg.get_rows()
+            norm: list[tuple[str, int, int]] = []
+            for tup in dlg.get_rows():
+                try:
+                    if len(tup) == 3:
+                        v, q, pct = tup  # type: ignore[misc]
+                        norm.append((str(v), int(q), int(pct)))
+                    elif len(tup) == 2:
+                        v, pct = tup  # type: ignore[misc]
+                        norm.append((str(v), 0, int(pct)))
+                except Exception:
+                    continue
+            self._buffer_veiculos = norm
             self.veiculos_pendentes.setValue(len(self._buffer_veiculos))
 
     def on_edit_descargas(self) -> None:
@@ -692,10 +734,21 @@ class MainWindow(QtWidgets.QMainWindow):
             self._buffer_descargas = dlg.get_rows()
 
     def on_edit_antecipados(self) -> None:
-        # Abre diálogo para editar veículos antecipados no buffer
+        # Abre diálogo para editar veículos antecipados no buffer (mantendo quantidade)
         dlg = VeiculosDialog(self, initial=self._buffer_antecipados, read_only=False, title="Veículos Antecipados")
         if dlg.exec() == QtWidgets.QDialog.Accepted:
-            self._buffer_antecipados = dlg.get_rows()
+            norm: list[tuple[str, int, int]] = []
+            for tup in dlg.get_rows():
+                try:
+                    if len(tup) == 3:
+                        v, q, pct = tup  # type: ignore[misc]
+                        norm.append((str(v), int(q), int(pct)))
+                    elif len(tup) == 2:
+                        v, pct = tup  # type: ignore[misc]
+                        norm.append((str(v), 0, int(pct)))
+                except Exception:
+                    continue
+            self._buffer_antecipados = norm
 
     def on_edit_carregamentos(self) -> None:
         # Abre diálogo para editar veículos de Carregamento C3 no buffer
@@ -712,28 +765,28 @@ class MainWindow(QtWidgets.QMainWindow):
         # Descargas (C3) coluna 5 abre veículos de descarga C3
         if col == 5:
             items = self.desc_repo.list_by_metrica(metrica_id)
-            initial = [(it.veiculo, int(it.porcentagem)) for it in items]
+            initial = [(it.veiculo, int(getattr(it, 'quantidade', 0)), int(it.porcentagem)) for it in items]
             dlg = VeiculosDialog(self, initial=initial, read_only=True, title=f"Descargas C3 (Métrica {metrica_id})")
             dlg.exec()
             return
         # Veículos Pendentes coluna 7 (0-based)
         if col == 7:
             items = self.veic_repo.list_by_metrica(metrica_id)
-            initial = [(it.veiculo, int(it.porcentagem)) for it in items]
+            initial = [(it.veiculo, int(getattr(it, 'quantidade', 0)), int(it.porcentagem)) for it in items]
             dlg = VeiculosDialog(self, initial=initial, read_only=True, title=f"Veículos Pendentes (Métrica {metrica_id})")
             dlg.exec()
             return
         # Fichas antecipadas coluna 9 (0-based)
         if col == 9:
             items = self.antec_repo.list_by_metrica(metrica_id)
-            initial = [(it.veiculo, int(it.porcentagem)) for it in items]
+            initial = [(it.veiculo, int(getattr(it, 'quantidade', 0)), int(it.porcentagem)) for it in items]
             dlg = VeiculosDialog(self, initial=initial, read_only=True, title=f"Veículos Antecipados (Métrica {metrica_id})")
             dlg.exec()
             return
         # Carregamentos (C3) coluna 6 (0-based)
         if col == 6:
             items = self.carg_repo.list_by_metrica(metrica_id)
-            initial = [(it.veiculo, int(it.porcentagem)) for it in items]
+            initial = [(it.veiculo, int(getattr(it, 'quantidade', 0)), int(it.porcentagem)) for it in items]
             dlg = VeiculosDialog(self, initial=initial, read_only=True, title=f"Carregamentos C3 (Métrica {metrica_id})")
             dlg.exec()
 
@@ -834,12 +887,13 @@ class MainWindow(QtWidgets.QMainWindow):
             # Sheet Veículos Pendentes
             add_sheet(
                 "VeiculosPendentes",
-                ["id", "metrica_id", "veiculo", "porcentagem", "criado_em"],
+                ["id", "metrica_id", "veiculo", "quantidade", "porcentagem", "criado_em"],
                 [
                     [
                         v.id,
                         v.metrica_id,
                         v.veiculo,
+                        int(getattr(v, "quantidade", 0)),
                         int(v.porcentagem),
                         (v.criado_em.strftime("%d/%m/%Y %H:%M") if hasattr(v, "criado_em") and v.criado_em else ""),
                     ]
@@ -850,12 +904,13 @@ class MainWindow(QtWidgets.QMainWindow):
             # Sheet Descargas C3
             add_sheet(
                 "DescargasC3",
-                ["id", "metrica_id", "veiculo", "porcentagem", "criado_em"],
+                ["id", "metrica_id", "veiculo", "quantidade", "porcentagem", "criado_em"],
                 [
                     [
                         d.id,
                         d.metrica_id,
                         d.veiculo,
+                        int(getattr(d, "quantidade", 0)),
                         int(d.porcentagem),
                         (d.criado_em.strftime("%d/%m/%Y %H:%M") if hasattr(d, "criado_em") and d.criado_em else ""),
                     ]
@@ -866,12 +921,13 @@ class MainWindow(QtWidgets.QMainWindow):
             # Sheet Antecipados
             add_sheet(
                 "Antecipados",
-                ["id", "metrica_id", "veiculo", "porcentagem", "criado_em"],
+                ["id", "metrica_id", "veiculo", "quantidade", "porcentagem", "criado_em"],
                 [
                     [
                         a.id,
                         a.metrica_id,
                         a.veiculo,
+                        int(getattr(a, "quantidade", 0)),
                         int(a.porcentagem),
                         (a.criado_em.strftime("%d/%m/%Y %H:%M") if hasattr(a, "criado_em") and a.criado_em else ""),
                     ]

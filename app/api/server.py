@@ -118,23 +118,13 @@ class ApiHandler(BaseHTTPRequestHandler):
             date_str = (qs.get("date", [""])[0] or "").strip()
             if not date_str:
                 return _json_response(self, 400, {"error": "parâmetro 'date' obrigatório (YYYY-MM-DD)"})
+            # Interpreta a data como foi salva (naive) sem conversão de fuso
             try:
-                # Data base local São Paulo
-                from zoneinfo import ZoneInfo
-                tz_sp = ZoneInfo("America/Sao_Paulo")
                 y, m, d = [int(x) for x in date_str.split("-")]
-                start_sp = datetime(y, m, d, 0, 0, 0, tzinfo=tz_sp)
-                end_sp = datetime(y, m, d, 23, 59, 59, 999000, tzinfo=tz_sp)
-                start_utc = start_sp.astimezone(timezone.utc).replace(tzinfo=None)
-                end_utc = end_sp.astimezone(timezone.utc).replace(tzinfo=None)
+                start_utc = datetime(y, m, d, 0, 0, 0)
+                end_utc = datetime(y, m, d, 23, 59, 59, 999000)
             except Exception:
-                # Fallback: assume UTC com margem de 3h (simplificado)
-                try:
-                    y, m, d = [int(x) for x in date_str.split("-")]
-                    start_utc = datetime(y, m, d, 3, 0, 0)  # 00:00 SP -> 03:00 UTC
-                    end_utc = start_utc + timedelta(hours=23, minutes=59, seconds=59)  # até 02:59:59 do dia seguinte UTC
-                except Exception:
-                    return _json_response(self, 400, {"error": "data inválida, use YYYY-MM-DD"})
+                return _json_response(self, 400, {"error": "data inválida, use YYYY-MM-DD"})
 
             cm = get_session()
             session = next(cm)
@@ -198,19 +188,19 @@ class ApiHandler(BaseHTTPRequestHandler):
                     "observacoes": observacoes,
                     "descargas_c3": {
                         "qtd": totals["descargas_c3"],
-                        "itens": [{"metrica_id": x.metrica_id, "veiculo": x.veiculo, "porcentagem": int(x.porcentagem)} for x in vd],
+                        "itens": [{"metrica_id": x.metrica_id, "veiculo": x.veiculo, "porcentagem": int(x.porcentagem), "quantidade": int(getattr(x, 'quantidade', 0))} for x in vd],
                     },
                     "carregamentos_c3": {
                         "qtd": totals["carregamentos_c3"],
-                        "itens": [{"metrica_id": x.metrica_id, "veiculo": x.veiculo, "porcentagem": int(x.porcentagem)} for x in vc],
+                        "itens": [{"metrica_id": x.metrica_id, "veiculo": x.veiculo, "porcentagem": int(x.porcentagem), "quantidade": int(getattr(x, 'quantidade', 0))} for x in vc],
                     },
                     "veiculos_pendentes": {
                         "qtd": totals["veiculos_pendentes"],
-                        "itens": [{"metrica_id": x.metrica_id, "veiculo": x.veiculo, "porcentagem": int(x.porcentagem)} for x in vp],
+                        "itens": [{"metrica_id": x.metrica_id, "veiculo": x.veiculo, "porcentagem": int(x.porcentagem), "quantidade": int(getattr(x, 'quantidade', 0))} for x in vp],
                     },
                     "antecipados": {
                         "qtd": totals["fichas_antecipadas"],
-                        "itens": [{"metrica_id": x.metrica_id, "veiculo": x.veiculo, "porcentagem": int(x.porcentagem)} for x in va],
+                        "itens": [{"metrica_id": x.metrica_id, "veiculo": x.veiculo, "porcentagem": int(x.porcentagem), "quantidade": int(getattr(x, 'quantidade', 0))} for x in va],
                     },
                 }
                 return _json_response(self, 200, payload)
@@ -228,7 +218,7 @@ class ApiHandler(BaseHTTPRequestHandler):
             try:
                 vrepo = VeiculoPendenteRepository(session)
                 rows = vrepo.list_by_metrica(metrica_id)
-                items = [{"veiculo": r.veiculo, "porcentagem": int(r.porcentagem)} for r in rows]
+                items = [{"veiculo": r.veiculo, "porcentagem": int(r.porcentagem), "quantidade": int(getattr(r, 'quantidade', 0))} for r in rows]
                 return _json_response(self, 200, {"items": items})
             finally:
                 session.close()
@@ -244,7 +234,7 @@ class ApiHandler(BaseHTTPRequestHandler):
             try:
                 drepo = VeiculoDescargaC3Repository(session)
                 rows = drepo.list_by_metrica(metrica_id)
-                items = [{"veiculo": r.veiculo, "porcentagem": int(r.porcentagem)} for r in rows]
+                items = [{"veiculo": r.veiculo, "porcentagem": int(r.porcentagem), "quantidade": int(getattr(r, 'quantidade', 0))} for r in rows]
                 return _json_response(self, 200, {"items": items})
             finally:
                 session.close()
@@ -260,7 +250,7 @@ class ApiHandler(BaseHTTPRequestHandler):
             try:
                 crepo = VeiculoCarregamentoC3Repository(session)
                 rows = crepo.list_by_metrica(metrica_id)
-                items = [{"veiculo": r.veiculo, "porcentagem": int(r.porcentagem)} for r in rows]
+                items = [{"veiculo": r.veiculo, "porcentagem": int(r.porcentagem), "quantidade": int(getattr(r, 'quantidade', 0))} for r in rows]
                 return _json_response(self, 200, {"items": items})
             finally:
                 session.close()

@@ -24,8 +24,11 @@ class MetricaRepository:
         carregamentos_c3: int,
         veiculos_pendentes: int,
         paletes_pendentes: int,
+        *,
+        criado_em=None,
     ) -> Metrica:
-        novo = Metrica(
+        # Se criado_em for fornecido (datetime naive ou timezone aware), usar direto
+        kwargs = dict(
             paletes_agendados=paletes_agendados,
             paletes_produzidos=paletes_produzidos,
             total_veiculos=total_veiculos,
@@ -37,6 +40,9 @@ class MetricaRepository:
             veiculos_pendentes=veiculos_pendentes,
             paletes_pendentes=paletes_pendentes,
         )
+        if criado_em is not None:
+            kwargs["criado_em"] = criado_em
+        novo = Metrica(**kwargs)
         self.session.add(novo)
         self.session.commit()
         self.session.refresh(novo)
@@ -77,8 +83,13 @@ class VeiculoPendenteRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def add(self, metrica_id: int, veiculo: str, porcentagem: int) -> VeiculoPendente:
-        v = VeiculoPendente(metrica_id=metrica_id, veiculo=veiculo, porcentagem=porcentagem)
+    def add(self, metrica_id: int, veiculo: str, porcentagem: int, quantidade: int | None = None) -> VeiculoPendente:
+        v = VeiculoPendente(
+            metrica_id=metrica_id,
+            veiculo=veiculo,
+            porcentagem=porcentagem,
+            quantidade=(quantidade if quantidade is not None else 0),
+        )
         self.session.add(v)
         self.session.commit()
         self.session.refresh(v)
@@ -101,8 +112,13 @@ class VeiculoDescargaC3Repository:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def add(self, metrica_id: int, veiculo: str, porcentagem: int) -> VeiculoDescargaC3:
-        v = VeiculoDescargaC3(metrica_id=metrica_id, veiculo=veiculo, porcentagem=porcentagem)
+    def add(self, metrica_id: int, veiculo: str, porcentagem: int, quantidade: int | None = None) -> VeiculoDescargaC3:
+        v = VeiculoDescargaC3(
+            metrica_id=metrica_id,
+            veiculo=veiculo,
+            porcentagem=porcentagem,
+            quantidade=(quantidade if quantidade is not None else 0),
+        )
         self.session.add(v)
         self.session.commit()
         self.session.refresh(v)
@@ -129,8 +145,13 @@ class VeiculoAntecipadoRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def add(self, metrica_id: int, veiculo: str, porcentagem: int) -> VeiculoAntecipado:
-        v = VeiculoAntecipado(metrica_id=metrica_id, veiculo=veiculo, porcentagem=porcentagem)
+    def add(self, metrica_id: int, veiculo: str, porcentagem: int, quantidade: int | None = None) -> VeiculoAntecipado:
+        v = VeiculoAntecipado(
+            metrica_id=metrica_id,
+            veiculo=veiculo,
+            porcentagem=porcentagem,
+            quantidade=(quantidade if quantidade is not None else 0),
+        )
         self.session.add(v)
         self.session.commit()
         self.session.refresh(v)
@@ -157,8 +178,13 @@ class VeiculoCarregamentoC3Repository:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def add(self, metrica_id: int, veiculo: str, porcentagem: int) -> VeiculoCarregamentoC3:
-        v = VeiculoCarregamentoC3(metrica_id=metrica_id, veiculo=veiculo, porcentagem=porcentagem)
+    def add(self, metrica_id: int, veiculo: str, porcentagem: int, quantidade: int | None = None) -> VeiculoCarregamentoC3:
+        v = VeiculoCarregamentoC3(
+            metrica_id=metrica_id,
+            veiculo=veiculo,
+            porcentagem=porcentagem,
+            quantidade=(quantidade if quantidade is not None else 0),
+        )
         self.session.add(v)
         self.session.commit()
         self.session.refresh(v)

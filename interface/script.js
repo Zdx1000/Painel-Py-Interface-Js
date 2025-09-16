@@ -35,7 +35,11 @@ function renderList(listId, items){
 
 		const pctEl = document.createElement("span");
 		pctEl.className = "pct";
-		pctEl.textContent = pct + "%";
+		if(typeof it.quantidade === 'number'){
+			pctEl.textContent = `${it.quantidade} -> ${pct}%`;
+		}else{
+			pctEl.textContent = pct + "%";
+		}
 
 		li.appendChild(label);
 		li.appendChild(wrap);
@@ -89,16 +93,44 @@ async function carregarDia(){
 
 		setText("v_desc_qtd", (data.descargas_c3 && data.descargas_c3.qtd) ?? 0);
 		renderList("list_descargas", (data.descargas_c3 && data.descargas_c3.itens) || []);
+		// Total de quantidades (Descargas C3)
+		try {
+			const dItems = (data.descargas_c3 && data.descargas_c3.itens) || [];
+			const sumDesc = dItems.reduce((acc, it) => acc + (parseInt(it.quantidade,10)||0), 0);
+			const elSD = document.getElementById('sum_desc_qtd');
+			if(elSD) elSD.textContent = `Total de Descargas C3: ${sumDesc}`;
+		} catch {}
 
 		setText("v_carr_qtd", (data.carregamentos_c3 && data.carregamentos_c3.qtd) ?? 0);
 		renderList("list_carreg", (data.carregamentos_c3 && data.carregamentos_c3.itens) || []);
+		// Total de quantidades (Carregamentos C3)
+		try {
+			const cItems = (data.carregamentos_c3 && data.carregamentos_c3.itens) || [];
+			const sumCarr = cItems.reduce((acc, it) => acc + (parseInt(it.quantidade,10)||0), 0);
+			const elSC = document.getElementById('sum_carr_qtd');
+			if(elSC) elSC.textContent = `Total de Carregamentos C3: ${sumCarr}`;
+		} catch {}
 
 		setText("v_pend_qtd", (data.veiculos_pendentes && data.veiculos_pendentes.qtd) ?? 0);
 		renderList("list_pend", (data.veiculos_pendentes && data.veiculos_pendentes.itens) || []);
+		// Total de quantidades (SOBRAS)
+		try {
+			const pItems = (data.veiculos_pendentes && data.veiculos_pendentes.itens) || [];
+			const sumPend = pItems.reduce((acc, it) => acc + (parseInt(it.quantidade,10)||0), 0);
+			const elSP = document.getElementById('sum_pend_qtd');
+			if(elSP) elSP.textContent = `Total de SOBRAS: ${sumPend}`;
+		} catch {}
 
 	// Fichas antecipadas (itens são veículos antecipados)
 	setText("v_antec_qtd", (data.antecipados && data.antecipados.qtd) ?? 0);
 	renderList("list_antec", (data.antecipados && data.antecipados.itens) || []);
+	// Total de quantidades (Fichas)
+	try {
+		const aItems = (data.antecipados && data.antecipados.itens) || [];
+		const sumAnt = aItems.reduce((acc, it) => acc + (parseInt(it.quantidade,10)||0), 0);
+		const elSA = document.getElementById('sum_antec_qtd');
+		if(elSA) elSA.textContent = `Total de Fichas: ${sumAnt}`;
+	} catch {}
 
 		// Observações: prioriza edição visual se existir para a data
 		const visual = OBS_VISUAL.get(val);
@@ -235,19 +267,6 @@ async function carregarDia(){
 				fichasBar.classList.add("bar-yellow");
 			}else{
 				fichasBar.classList.add("bar-green");
-			}
-		}
-		const fichasExtraBlock = document.getElementById("fichas_extra_block");
-		if(fichasExtraBlock){
-			const pend = Math.max(0, parseInt(t.paletes_pendentes||0,10));
-			if(pend > 0 && fichasTotal > 0){
-				const extraPct = Math.round((pend / fichasTotal) * 100);
-				setText("fichas_extra_pct", extraPct);
-				const fExtraFill = document.getElementById("fichas_extra_fill");
-				if(fExtraFill){ fExtraFill.style.width = Math.min(100, Math.max(5, extraPct)) + "%"; }
-				fichasExtraBlock.style.display = "block";
-			} else {
-				fichasExtraBlock.style.display = "none";
 			}
 		}
 	}catch(e){
