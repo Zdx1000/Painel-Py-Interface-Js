@@ -1,10 +1,49 @@
 const API_BASE = "http://127.0.0.1:8765"; // iniciado pelo app desktop
+let MODE_TEMPORAL = false;
 
 async function fetchDia(dateStr){
 	const url = `${API_BASE}/api/dia?date=${encodeURIComponent(dateStr)}`;
 	const res = await fetch(url);
 	if(!res.ok) throw new Error("Erro ao buscar dia");
 	return res.json();
+}
+
+// Busca dados agregados por período [start, end] inclusivo
+async function fetchPeriodo(startStr, endStr){
+	const url = `${API_BASE}/api/periodo?start=${encodeURIComponent(startStr)}&end=${encodeURIComponent(endStr)}`;
+	const res = await fetch(url);
+	if(!res.ok) throw new Error("Erro ao buscar período");
+	return res.json();
+}
+
+function toYmd(d){
+	const yyyy = d.getFullYear();
+	const mm = String(d.getMonth()+1).padStart(2, "0");
+	const dd = String(d.getDate()).padStart(2, "0");
+	return `${yyyy}-${mm}-${dd}`;
+}
+
+async function fetchPeriodoFallback(startStr, endStr){
+	// Faz loop por dias chamando /api/dia
+	const start = new Date(startStr + 'T00:00:00');
+	const end = new Date(endStr + 'T00:00:00');
+	const out = [];
+	if(isNaN(start) || isNaN(end) || start > end) return out;
+	for(let d = new Date(start); d <= end; d.setDate(d.getDate()+1)){
+		const ymd = toYmd(d);
+		try{
+			const resp = await fetchDia(ymd);
+			const t = resp.totals || {};
+			out.push({
+				date: ymd,
+				paletes_agendados: Number(t.paletes_agendados)||0,
+				paletes_produzidos: Number(t.paletes_produzidos)||0,
+			});
+		}catch{
+			out.push({ date: ymd, paletes_agendados: 0, paletes_produzidos: 0 });
+		}
+	}
+	return out;
 }
 
 function setText(id, val){
@@ -249,10 +288,11 @@ async function carregarDia(){
 			if(lbVP) lbVP.textContent = String(vpB);
 		}
 
-		// Progresso do dia (Fichas finalizadas / Total de fichas) e extra = Paletes Pendentes
+		// Progresso do dia (Fichas finalizadas / Total de fichas)
 		const fichasTotal = Math.max(0, parseInt(t.total_fichas||0,10));
 		const fichasFeitasRaw = Math.max(0, parseInt(t.fichas_finalizadas||0,10));
 		const fichasFeitas = Math.min(fichasTotal||0, fichasFeitasRaw);
+		const fichasPctReal = fichasTotal > 0 ? Math.round((fichasFeitasRaw / fichasTotal) * 100) : 0; // pode ultrapassar 100
 		const fichasPct = fichasTotal > 0 ? Math.round((fichasFeitas / fichasTotal) * 100) : 0;
 		setText("fichas_total", fichasTotal);
 		setText("fichas_done", fichasFeitasRaw);
@@ -260,8 +300,10 @@ async function carregarDia(){
 		const fichasBar = document.getElementById("fichas_fill");
 		if(fichasBar) {
 			fichasBar.style.width = fichasPct + "%";
-			fichasBar.classList.remove("bar-red", "bar-yellow", "bar-green");
-			if(fichasPct <= 70){
+			fichasBar.classList.remove("bar-red", "bar-yellow", "bar-green", "bar-green-strong");
+			if(fichasPctReal > 100){
+				fichasBar.classList.add("bar-green-strong");
+			}else if(fichasPct <= 70){
 				fichasBar.classList.add("bar-red");
 			}else if(fichasPct <= 90){
 				fichasBar.classList.add("bar-yellow");
@@ -285,6 +327,226 @@ document.addEventListener("DOMContentLoaded", () => {
 	const input = document.getElementById("datePick");
 	input.value = today;
 	document.getElementById("loadDay").addEventListener("click", carregarDia);
+
+	// Botão: Gráfico temporal (placeholder)
+	const btnTemporal = document.getElementById("openTemporal");
+	if(btnTemporal){
+		btnTemporal.addEventListener("click", async () => {
+			const dailySectionCards = document.getElementById('cards');
+			const dailySectionLists = document.querySelector('section.lists');
+			const temporalSection = document.getElementById('temporal_section');
+			const titleEl = document.getElementById('pageTitle');
+			const controls = document.getElementById('temporalControls');
+			const dateInput = document.getElementById('datePick');
+			const dateLabel = document.querySelector('label[for="datePick"]');
+			const btnLoadDay = document.getElementById('loadDay');
+			if(!MODE_TEMPORAL){
+				// Entrar no modo temporal
+				MODE_TEMPORAL = true;
+				if(dailySectionCards) dailySectionCards.style.display = 'none';
+				if(dailySectionLists) dailySectionLists.style.display = 'none';
+				if(temporalSection) temporalSection.style.display = 'grid';
+				if(controls) controls.style.display = 'inline-flex';
+				if(titleEl) titleEl.textContent = 'Apresentação Gráfica — Recebimento CAD UDI';
+				btnTemporal.textContent = 'Apresentação diária';
+				// Oculta controles de seleção diária (label e botão Carregar; e também o input para limpar o head)
+				if(dateLabel) dateLabel.style.display = 'none';
+				if(dateInput) dateInput.style.display = 'none';
+				if(btnLoadDay) btnLoadDay.style.display = 'none';
+				// Preenche período padrão (últimos 7 dias)
+				const end = new Date();
+				const start = new Date(); start.setDate(end.getDate()-6);
+				document.getElementById('rangeStart').value = toYmd(start);
+				document.getElementById('rangeEnd').value = toYmd(end);
+				// Auto-carregar período
+				const clickEvt = new Event('click');
+				document.getElementById('loadRange').dispatchEvent(clickEvt);
+			}else{
+				// Sair do modo temporal (voltar à diária)
+				MODE_TEMPORAL = false;
+				if(temporalSection) temporalSection.style.display = 'none';
+				if(controls) controls.style.display = 'none';
+				if(dailySectionCards) dailySectionCards.style.display = 'grid';
+				if(dailySectionLists) dailySectionLists.style.display = 'grid';
+				btnTemporal.textContent = 'Grafico temporal';
+				// Restaura os controles diários no head
+				if(dateLabel) dateLabel.style.display = '';
+				if(dateInput) dateInput.style.display = '';
+				if(btnLoadDay) btnLoadDay.style.display = '';
+				// Atualiza o título de volta para diária com a data atual escolhida
+				try{ await carregarDia(); }catch{}
+			}
+		});
+	}
+
+	const btnLoadRange = document.getElementById('loadRange');
+	if(btnLoadRange){
+		btnLoadRange.addEventListener('click', async () => {
+			const s = document.getElementById('rangeStart').value;
+			const e = document.getElementById('rangeEnd').value;
+			if(!s || !e){
+				alert('Informe o período (Entre ... e ...)');
+				return;
+			}
+			try{
+				let data;
+				try{
+					data = await fetchPeriodo(s, e);
+				}catch{
+					data = await fetchPeriodoFallback(s, e);
+				}
+				// Espera-se formato: [{date: 'YYYY-MM-DD', paletes_agendados: n, paletes_produzidos: n}, ...]
+				const categories = [];
+				const serieLine = [];
+				const serieCol = [];
+				const serieDesc = [];
+				const serieCarr = [];
+				for(const row of (data || [])){
+					categories.push(row.date);
+					serieLine.push(Number(row.paletes_agendados) || 0);
+					serieCol.push(Number(row.paletes_produzidos) || 0);
+					serieDesc.push(Number(row.descargas_c3) || 0);
+					serieCarr.push(Number(row.carregamentos_c3) || 0);
+				}
+
+				// Colorir colunas com thresholds baseado em porcentagem diária (produzidos/agendados)
+				const colors = serieCol.map((v, i) => {
+					const total = Math.max(0, Number(serieLine[i]) || 0);
+					const pct = total > 0 ? Math.round((v/total)*100) : 0;
+					if(pct <= 70) return '#dc2626'; // vermelho
+					if(pct <= 90) return '#f59e0b'; // amarelo
+					return '#16a34a'; // verde
+				});
+
+				const el = document.querySelector('#temporal_chart');
+				if(!el){ return; }
+				if(window.__apexTemporal){
+					try{ window.__apexTemporal.destroy(); }catch{}
+				}
+				// Montar series, com colunas coloridas por ponto
+				const colData = categories.map((x, i) => ({ x, y: serieCol[i], fillColor: colors[i] }));
+				const lineData = categories.map((x, i) => ({ x, y: serieLine[i] }));
+
+				// Usar mesmo range de eixo Y para as duas séries para comparação direta
+				const allVals = [...serieLine, ...serieCol];
+				let yMax = 0;
+				for(const v of allVals){ yMax = Math.max(yMax, Number(v)||0); }
+				if(!isFinite(yMax) || yMax <= 0){ yMax = 1; }
+
+				const options = {
+					chart:{ type:'line', height: 360, stacked: false, toolbar:{show:true}, background: 'transparent', foreColor: '#cbd5e1' },
+					theme:{ mode: 'dark', palette: 'palette10' },
+					title:{ text: undefined },
+					xaxis:{
+						categories,
+						labels:{ rotate: -25, style:{ colors: '#cbd5e1', fontSize: '12px' } },
+						axisBorder:{ color:'#374151' },
+						axisTicks:{ color:'#374151' }
+					},
+					yaxis:[
+						{ seriesName:'Agendados', title:{text:'Agendados', style:{ color:'#9ca3af' }}, labels:{ style:{ colors:'#cbd5e1' }}, min:0, max: yMax },
+						{ opposite:true, seriesName:'Produzidos', title:{text:'Produzidos', style:{ color:'#9ca3af' }}, labels:{ style:{ colors:'#cbd5e1' }}, min:0, max: yMax }
+					],
+					legend:{ position:'top', labels:{ colors:'#e5e7eb' } },
+					stroke:{ width:[3,0], curve:'smooth' },
+					markers:{ size:3, hover:{ size:6 } },
+					grid:{ borderColor:'#1f2937', strokeDashArray:3 },
+					plotOptions:{ bar:{ columnWidth:'55%', borderRadius: 2 } },
+					dataLabels:{ enabled:false },
+					series:[
+						{ name:'Agendados (SIRF)', type:'line', data: lineData },
+						{ name:'Produzidos (WMS)', type:'column', data: colData }
+					],
+					colors: ['#60a5fa', '#3b82f6'],
+					fill:{ opacity:1 },
+					distributed: true,
+					tooltip:{
+						shared:true,
+						intersect:false,
+						theme:'dark',
+						custom: function({series, seriesIndex, dataPointIndex, w}){
+							const date = w.globals.categoryLabels[dataPointIndex] || '';
+							const ag = (series[0] && series[0][dataPointIndex]) || 0;
+							const pr = (series[1] && series[1][dataPointIndex]) || 0;
+							const pct = ag > 0 ? Math.round((pr/ag)*100) : 0;
+							const [y,m,d] = String(date).split('-');
+							const dateFmt = (y && m && d) ? `${d}/${m}/${y}` : date;
+							return `
+								<div class="apx-tip" style="background:#0b1220;border:1px solid #1f2937;color:#e5e7eb;padding:8px 10px;border-radius:6px;min-width:180px">
+									<div style="font-weight:600;margin-bottom:6px;color:#93c5fd">${dateFmt}</div>
+									<div style="display:flex;justify-content:space-between;gap:8px"><span>Agendados (SIRF)</span><span style="color:#93c5fd">${ag}</span></div>
+									<div style="display:flex;justify-content:space-between;gap:8px"><span>Produzidos (WMS)</span><span style="color:${pct<=70?'#fca5a5':(pct<=90?'#fcd34d':'#86efac')}">${pr} (${pct}%)</span></div>
+								</div>
+							`;
+						}
+					}
+				};
+				window.__apexTemporal = new ApexCharts(el, options);
+				window.__apexTemporal.render();
+
+				// ===== Gráfico temporal C3 =====
+				const elC3 = document.querySelector('#temporal_chart_c3');
+				if(elC3){
+					if(window.__apexTemporalC3){ try{ window.__apexTemporalC3.destroy(); }catch{} }
+					// cores por coluna em C3 baseadas na % Carregamentos/Descargas
+					const colorsC3 = serieCarr.map((v,i)=>{
+						const total = Math.max(0, Number(serieDesc[i])||0);
+						const pct = total > 0 ? Math.round((v/total)*100) : 0;
+						if(pct <= 70) return '#dc2626';
+						if(pct <= 90) return '#f59e0b';
+						return '#16a34a';
+					});
+					const colDataC3 = categories.map((x,i)=>({x, y: serieCarr[i], fillColor: colorsC3[i]}));
+					const lineDataC3 = categories.map((x,i)=>({x, y: serieDesc[i]}));
+					const allValsC3 = [...serieDesc, ...serieCarr];
+					let yMaxC3 = 0; for(const v of allValsC3){ yMaxC3 = Math.max(yMaxC3, Number(v)||0); }
+					if(!isFinite(yMaxC3) || yMaxC3 <= 0){ yMaxC3 = 1; }
+					const optionsC3 = {
+						chart:{ type:'line', height: 360, stacked:false, toolbar:{show:true}, background:'transparent', foreColor:'#cbd5e1' },
+						theme:{ mode:'dark', palette:'palette10' },
+						title:{ text: undefined },
+						xaxis:{ categories, labels:{ rotate:-25, style:{ colors:'#cbd5e1', fontSize:'12px' } }, axisBorder:{ color:'#374151' }, axisTicks:{ color:'#374151' } },
+						yaxis:[
+							{ seriesName:'Descargas C3', title:{text:'Descargas C3', style:{ color:'#9ca3af' }}, labels:{ style:{ colors:'#cbd5e1' }}, min:0, max:yMaxC3 },
+							{ opposite:true, seriesName:'Carregamentos C3', title:{text:'Carregamentos C3', style:{ color:'#9ca3af' }}, labels:{ style:{ colors:'#cbd5e1' }}, min:0, max:yMaxC3 }
+						],
+						legend:{ position:'top', labels:{ colors:'#e5e7eb' } },
+						stroke:{ width:[3,0], curve:'smooth' }, markers:{ size:3, hover:{ size:6 } }, grid:{ borderColor:'#1f2937', strokeDashArray:3 },
+						plotOptions:{ bar:{ columnWidth:'55%', borderRadius:2 } }, dataLabels:{ enabled:false },
+						series:[
+							{ name:'Qtd Descarga C3', type:'line', data: lineDataC3 },
+							{ name:'Qtd Carregamento C3', type:'column', data: colDataC3 }
+						],
+						colors:['#60a5fa', '#3b82f6'], fill:{ opacity:1 }, distributed:true,
+						tooltip:{
+							shared:true, intersect:false, theme:'dark',
+							custom: function({series, dataPointIndex, w}){
+								const date = w.globals.categoryLabels[dataPointIndex] || '';
+								const de = (series[0] && series[0][dataPointIndex]) || 0;
+								const ca = (series[1] && series[1][dataPointIndex]) || 0;
+								const pct = de > 0 ? Math.round((ca/de)*100) : 0;
+								const [y,m,d] = String(date).split('-');
+								const dateFmt = (y && m && d) ? `${d}/${m}/${y}` : date;
+								const pctColor = pct<=70?'#fca5a5':(pct<=90?'#fcd34d':'#86efac');
+								return `
+									<div class="apx-tip" style="background:#0b1220;border:1px solid #1f2937;color:#e5e7eb;padding:8px 10px;border-radius:6px;min-width:200px">
+										<div style="font-weight:600;margin-bottom:6px;color:#93c5fd">${dateFmt}</div>
+										<div style="display:flex;justify-content:space-between;gap:8px"><span>Qtd Descarga C3</span><span style="color:#93c5fd">${de}</span></div>
+										<div style="display:flex;justify-content:space-between;gap:8px"><span>Qtd Carregamento C3</span><span style="color:${pctColor}">${ca} (${pct}%)</span></div>
+									</div>
+								`;
+							}
+						}
+					};
+					window.__apexTemporalC3 = new ApexCharts(elC3, optionsC3);
+					window.__apexTemporalC3.render();
+				}
+			}catch(err){
+				console.error(err);
+				alert('Erro ao carregar dados do período.');
+			}
+		});
+	}
 
 	// Toggle editor de observação (rich-text)
 	const editBtn = document.getElementById("editObs");

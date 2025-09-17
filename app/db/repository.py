@@ -12,6 +12,9 @@ class MetricaRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
 
+    def get(self, metrica_id: int) -> Metrica | None:
+        return self.session.get(Metrica, metrica_id)
+
     def add(
         self,
         paletes_agendados: int,
@@ -65,6 +68,51 @@ class MetricaRepository:
         stmt = select(func.count()).select_from(Metrica)
         return int(self.session.execute(stmt).scalar_one())
 
+    def update(
+        self,
+        metrica_id: int,
+        *,
+        paletes_agendados: int | None = None,
+        paletes_produzidos: int | None = None,
+        total_veiculos: int | None = None,
+        veiculos_finalizados: int | None = None,
+        fichas_antecipadas: int | None = None,
+        observacao: str | None | None = None,
+        descargas_c3: int | None = None,
+        carregamentos_c3: int | None = None,
+        veiculos_pendentes: int | None = None,
+        paletes_pendentes: int | None = None,
+        criado_em=None,
+    ) -> bool:
+        m = self.session.get(Metrica, metrica_id)
+        if not m:
+            return False
+        if paletes_agendados is not None:
+            m.paletes_agendados = int(paletes_agendados)
+        if paletes_produzidos is not None:
+            m.paletes_produzidos = int(paletes_produzidos)
+        if total_veiculos is not None:
+            m.total_veiculos = int(total_veiculos)
+        if veiculos_finalizados is not None:
+            m.veiculos_finalizados = int(veiculos_finalizados)
+        if fichas_antecipadas is not None:
+            m.fichas_antecipadas = int(fichas_antecipadas)
+        # observacao pode ser string ou None; se None explícito, limpa
+        if observacao is not None:
+            m.observacao = observacao
+        if descargas_c3 is not None:
+            m.descargas_c3 = int(descargas_c3)
+        if carregamentos_c3 is not None:
+            m.carregamentos_c3 = int(carregamentos_c3)
+        if veiculos_pendentes is not None:
+            m.veiculos_pendentes = int(veiculos_pendentes)
+        if paletes_pendentes is not None:
+            m.paletes_pendentes = int(paletes_pendentes)
+        if criado_em is not None:
+            m.criado_em = criado_em
+        self.session.commit()
+        return True
+
     def delete(self, metrica_id: int) -> bool:
         m = self.session.get(Metrica, metrica_id)
         if not m:
@@ -99,6 +147,10 @@ class VeiculoPendenteRepository:
         stmt = select(VeiculoPendente).where(VeiculoPendente.metrica_id == metrica_id).order_by(VeiculoPendente.criado_em.desc())
         return list(self.session.execute(stmt).scalars().all())
 
+    def delete_by_metrica(self, metrica_id: int) -> None:
+        self.session.execute(delete(VeiculoPendente).where(VeiculoPendente.metrica_id == metrica_id))
+        self.session.commit()
+
     def delete(self, veiculo_id: int) -> bool:
         v = self.session.get(VeiculoPendente, veiculo_id)
         if not v:
@@ -131,6 +183,10 @@ class VeiculoDescargaC3Repository:
             .order_by(VeiculoDescargaC3.criado_em.desc())
         )
         return list(self.session.execute(stmt).scalars().all())
+
+    def delete_by_metrica(self, metrica_id: int) -> None:
+        self.session.execute(delete(VeiculoDescargaC3).where(VeiculoDescargaC3.metrica_id == metrica_id))
+        self.session.commit()
 
     def delete(self, item_id: int) -> bool:
         v = self.session.get(VeiculoDescargaC3, item_id)
@@ -165,6 +221,10 @@ class VeiculoAntecipadoRepository:
         )
         return list(self.session.execute(stmt).scalars().all())
 
+    def delete_by_metrica(self, metrica_id: int) -> None:
+        self.session.execute(delete(VeiculoAntecipado).where(VeiculoAntecipado.metrica_id == metrica_id))
+        self.session.commit()
+
     def delete(self, item_id: int) -> bool:
         v = self.session.get(VeiculoAntecipado, item_id)
         if not v:
@@ -197,6 +257,10 @@ class VeiculoCarregamentoC3Repository:
             .order_by(VeiculoCarregamentoC3.criado_em.desc())
         )
         return list(self.session.execute(stmt).scalars().all())
+
+    def delete_by_metrica(self, metrica_id: int) -> None:
+        self.session.execute(delete(VeiculoCarregamentoC3).where(VeiculoCarregamentoC3.metrica_id == metrica_id))
+        self.session.commit()
 
     def delete(self, item_id: int) -> bool:
         v = self.session.get(VeiculoCarregamentoC3, item_id)

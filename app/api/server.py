@@ -207,6 +207,60 @@ class ApiHandler(BaseHTTPRequestHandler):
             finally:
                 session.close()
 
+        if path == "/api/periodo":
+            qs = parse_qs(parsed.query or "")
+            start_str = (qs.get("start", [""])[0] or "").strip()
+            end_str = (qs.get("end", [""])[0] or "").strip()
+            if not start_str or not end_str:
+                return _json_response(self, 400, {"error": "parâmetros 'start' e 'end' são obrigatórios (YYYY-MM-DD)"})
+            try:
+                sy, sm, sd = [int(x) for x in start_str.split("-")]
+                ey, em, ed = [int(x) for x in end_str.split("-")]
+                start_utc = datetime(sy, sm, sd, 0, 0, 0)
+                end_utc = datetime(ey, em, ed, 23, 59, 59, 999000)
+            except Exception:
+                return _json_response(self, 400, {"error": "datas inválidas, use YYYY-MM-DD"})
+            if start_utc > end_utc:
+                return _json_response(self, 400, {"error": "'start' deve ser menor ou igual a 'end'"})
+
+            cm = get_session()
+            session = next(cm)
+            try:
+                rows = session.execute(
+                    select(Metrica).where(Metrica.criado_em >= start_utc, Metrica.criado_em <= end_utc)
+                ).scalars().all()
+                if not rows:
+                    return _json_response(self, 200, [])
+
+                # Agrupa por dia (naive date de criado_em)
+                agg: dict[str, dict[str, int]] = {}
+                for m in rows:
+                    d = m.criado_em.date().isoformat()
+                    cur = agg.setdefault(d, {
+                        "paletes_agendados": 0,
+                        "paletes_produzidos": 0,
+                        "descargas_c3": 0,
+                        "carregamentos_c3": 0,
+                    })
+                    cur["paletes_agendados"] += int(m.paletes_agendados or 0)
+                    cur["paletes_produzidos"] += int(m.paletes_produzidos or 0)
+                    cur["descargas_c3"] += int(m.descargas_c3 or 0)
+                    cur["carregamentos_c3"] += int(m.carregamentos_c3 or 0)
+
+                out = [
+                    {
+                        "date": d,
+                        "paletes_agendados": v["paletes_agendados"],
+                        "paletes_produzidos": v["paletes_produzidos"],
+                        "descargas_c3": v["descargas_c3"],
+                        "carregamentos_c3": v["carregamentos_c3"],
+                    }
+                    for d, v in sorted(agg.items(), key=lambda kv: kv[0])
+                ]
+                return _json_response(self, 200, out)
+            finally:
+                session.close()
+
         if path.startswith("/api/metricas/") and path.endswith("/veiculos"):
             parts = path.split("/")
             try:

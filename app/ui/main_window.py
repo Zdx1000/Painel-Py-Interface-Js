@@ -34,8 +34,9 @@ class MetricaTableModel(QtCore.QAbstractTableModel):
         "Carregamentos (C3)",
         "Veículos Pendentes",
         "Paletes Pendentes",
-    "Fichas antecipadas",
+        "Fichas antecipadas",
         "Criado em",
+        "Ações",
     ]
 
     def __init__(self, rows: list[tuple]) -> None:
@@ -373,7 +374,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.table.doubleClicked.connect(self.on_table_double_click)
         # Destaque interativo nas colunas com ação de duplo clique
         self.table.setMouseTracking(True)
-        self._interactive_cols = {5, 6, 7, 9}
+        self._interactive_cols = {5, 6, 7, 9, 11}
         self._delegate = InteractiveHighlightDelegate(self.table, self._interactive_cols)
         self.table.setItemDelegate(self._delegate)
         # Atualiza hover/cursor dinamicamente
@@ -458,10 +459,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.carg_repo = VeiculoCarregamentoC3Repository(self._session)
 
         # buffers temporários antes de salvar (veiculo, quantidade, porcentagem)
-        self._buffer_veiculos = []  # type: list[tuple[str, int, int]]
-        self._buffer_descargas = []  # type: list[tuple[str, int, int]]
-        self._buffer_antecipados = []  # type: list[tuple[str, int, int]]
-        self._buffer_carregamentos = []  # type: list[tuple[str, int, int]]
+        self._buffer_veiculos = []
+        self._buffer_descargas = []
+        self._buffer_antecipados = []
+        self._buffer_carregamentos = []
 
         # Estado de paginação
         self._page_size_val = int(self.page_size.currentText())
@@ -543,6 +544,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     m.paletes_pendentes,
                     getattr(m, "fichas_antecipadas", 0),
                     criado_fmt,
+                    "Editar | Excluir",
                 )
             )
         self.model.set_rows(rows)
@@ -768,6 +770,10 @@ class MainWindow(QtWidgets.QMainWindow):
         col = index.column()
         row = index.row()
         metrica_id = int(self.model._rows[row][0])
+        # Coluna de ações
+        if col == 11:
+            self._show_actions_menu(row, metrica_id, index)
+            return
         # Descargas (C3) coluna 5 abre veículos de descarga C3
         if col == 5:
             items = self.desc_repo.list_by_metrica(metrica_id)
@@ -807,6 +813,165 @@ class MainWindow(QtWidgets.QMainWindow):
         if not ok:
             QtWidgets.QMessageBox.warning(self, "Exclusão", "Registro não encontrado.")
         # Se exclusão afetar última página, refresh ajusta a página atual
+        self.refresh()
+
+    # ==== Fluxo de Ações (Editar/Excluir) na tabela ====
+    def _show_actions_menu(self, row: int, metrica_id: int, index: QtCore.QModelIndex) -> None:
+        menu = QtWidgets.QMenu(self)
+        act_edit = menu.addAction("Editar…")
+        act_del = menu.addAction("Excluir…")
+        pos = self.table.viewport().mapToGlobal(self.table.visualRect(index).bottomLeft())
+        action = menu.exec(pos)
+        if action is act_edit:
+            self._edit_record(metrica_id)
+        elif action is act_del:
+            self._delete_record(metrica_id)
+
+    def _delete_record(self, metrica_id: int) -> None:
+        resp = QtWidgets.QMessageBox.question(
+            self,
+            "Excluir registro",
+            f"Tem certeza que deseja excluir o registro ID {metrica_id}?",
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        if resp != QtWidgets.QMessageBox.Yes:
+            return
+        ok = self.repo.delete(int(metrica_id))
+        if not ok:
+            QtWidgets.QMessageBox.warning(self, "Exclusão", "Registro não encontrado.")
+        self.refresh()
+
+    def _edit_record(self, metrica_id: int) -> None:
+        # Carrega registro e respectivos detalhes em memória
+        m = self.repo.get(int(metrica_id))
+        if not m:
+            QtWidgets.QMessageBox.warning(self, "Edição", "Registro não encontrado.")
+            return
+        # Preenche formulário com dados do registro
+        self.paletes_agendados.setValue(int(m.paletes_agendados))
+        self.paletes_produzidos.setValue(int(m.paletes_produzidos))
+        self.total_veiculos.setValue(int(m.total_veiculos))
+        self.veiculos_finalizados.setValue(int(m.veiculos_finalizados))
+        self.descargas_c3.setValue(int(m.descargas_c3))
+        self.carregamentos_c3.setValue(int(m.carregamentos_c3))
+        self.veiculos_pendentes.setValue(int(m.veiculos_pendentes))
+        self.fichas_antecipadas.setValue(int(getattr(m, "fichas_antecipadas", 0)))
+        self.paletes_pendentes.setValue(int(m.paletes_pendentes))
+        self.observacao.setPlainText(m.observacao or "")
+        # Data referência = data do registro
+        try:
+            from PySide6 import QtCore as _QtC
+            d = _QtC.QDate(m.criado_em.year, m.criado_em.month, m.criado_em.day)
+            self.date_ref.setDate(d)
+        except Exception:
+            pass
+        # Buffers com listas do registro para permitir regravação
+        veics = self.veic_repo.list_by_metrica(m.id)
+        self._buffer_veiculos = [(it.veiculo, int(getattr(it, 'quantidade', 0)), int(it.porcentagem)) for it in veics]
+        descs = self.desc_repo.list_by_metrica(m.id)
+        self._buffer_descargas = [(it.veiculo, int(getattr(it, 'quantidade', 0)), int(it.porcentagem)) for it in descs]
+        ants = self.antec_repo.list_by_metrica(m.id)
+        self._buffer_antecipados = [(it.veiculo, int(getattr(it, 'quantidade', 0)), int(it.porcentagem)) for it in ants]
+        cars = self.carg_repo.list_by_metrica(m.id)
+        self._buffer_carregamentos = [(it.veiculo, int(getattr(it, 'quantidade', 0)), int(it.porcentagem)) for it in cars]
+
+        # Troca botão Adicionar -> Salvar alterações e guarda id em edição
+        self._editing_id = int(m.id)
+        self.btn_add.setText("Salvar alterações")
+        try:
+            self.btn_add.clicked.disconnect()
+        except Exception:
+            pass
+        self.btn_add.clicked.connect(self.on_save_edit)
+
+    def on_save_edit(self) -> None:
+        mid = getattr(self, "_editing_id", None)
+        if not mid:
+            return
+        # Validação simples e coleta
+        paletes_agendados = int(self.paletes_agendados.value())
+        paletes_produzidos = int(self.paletes_produzidos.value())
+        total_veiculos = int(self.total_veiculos.value())
+        veiculos_finalizados = int(self.veiculos_finalizados.value())
+        fichas_antecipadas = int(self.fichas_antecipadas.value())
+        descargas_c3 = int(self.descargas_c3.value())
+        carregamentos_c3 = int(self.carregamentos_c3.value())
+        veiculos_pendentes = int(self.veiculos_pendentes.value())
+        paletes_pendentes = int(self.paletes_pendentes.value())
+        observacao = (self.observacao.toPlainText().strip() or None)
+        # Atualiza métrica principal
+        from datetime import datetime as _dt
+        qd = self.date_ref.date()
+        criado_em = _dt(qd.year(), qd.month(), qd.day(), 0, 0, 0)
+        ok = self.repo.update(
+            mid,
+            paletes_agendados=paletes_agendados,
+            paletes_produzidos=paletes_produzidos,
+            total_veiculos=total_veiculos,
+            veiculos_finalizados=veiculos_finalizados,
+            fichas_antecipadas=fichas_antecipadas,
+            observacao=observacao,
+            descargas_c3=descargas_c3,
+            carregamentos_c3=carregamentos_c3,
+            veiculos_pendentes=veiculos_pendentes,
+            paletes_pendentes=paletes_pendentes,
+            criado_em=criado_em,
+        )
+        if not ok:
+            QtWidgets.QMessageBox.warning(self, "Edição", "Falha ao salvar alterações.")
+            return
+        # Regrava listas vinculadas: remove tudo e insere do buffer atual
+        try:
+            self.veic_repo.delete_by_metrica(mid)
+            for v, q, p in self._buffer_veiculos:
+                self.veic_repo.add(mid, v, int(p), quantidade=int(q))
+        except Exception:
+            pass
+        try:
+            self.desc_repo.delete_by_metrica(mid)
+            for v, q, p in self._buffer_descargas:
+                self.desc_repo.add(mid, v, int(p), quantidade=int(q))
+        except Exception:
+            pass
+        try:
+            self.antec_repo.delete_by_metrica(mid)
+            for v, q, p in self._buffer_antecipados:
+                self.antec_repo.add(mid, v, int(p), quantidade=int(q))
+        except Exception:
+            pass
+        try:
+            self.carg_repo.delete_by_metrica(mid)
+            for v, q, p in self._buffer_carregamentos:
+                self.carg_repo.add(mid, v, int(p), quantidade=int(q))
+        except Exception:
+            pass
+        # Finaliza edição: volta botão ao estado original
+        try:
+            self.btn_add.clicked.disconnect()
+        except Exception:
+            pass
+        self.btn_add.setText("Adicionar")
+        self.btn_add.clicked.connect(self.on_add)
+        self._editing_id = None
+        # Limpa campos após salvar alterações (mesmo comportamento do Adicionar)
+        for w in (
+            self.paletes_agendados,
+            self.paletes_produzidos,
+            self.total_veiculos,
+            self.veiculos_finalizados,
+            self.descargas_c3,
+            self.carregamentos_c3,
+            self.veiculos_pendentes,
+            self.fichas_antecipadas,
+            self.paletes_pendentes,
+        ):
+            w.setValue(0)
+        self.observacao.setPlainText("")
+        self._buffer_veiculos = []
+        self._buffer_descargas = []
+        self._buffer_antecipados = []
+        self._buffer_carregamentos = []
         self.refresh()
 
     def on_export(self) -> None:

@@ -7,6 +7,8 @@
 	<link rel="stylesheet" href="style.css" />
 	<!-- Icones Fontisto Brain Circuit -->
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontisto/fontisto@latest/css/fontisto/fontisto.min.css">
+	<!-- ApexCharts -->
+	<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 	<script defer src="script.js"></script>
 	<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ctext y='50%25' x='50%25' dominant-baseline='middle' text-anchor='middle' font-size='32'%3E%F0%9F%A7%A0%3C/text%3E%3C/svg%3E">
 	<style>
@@ -22,9 +24,31 @@
 			<input id="datePick" type="date" />
 			<button id="loadDay">Carregar</button>
 			<button id="editObs" type="button">Editar Observação</button>
+			<button id="openTemporal" type="button">Grafico temporal</button>
+			<!-- Controles de período (somente modo temporal) -->
+			<span id="temporalControls" style="display:none; gap:8px; align-items:center;">
+				<label for="rangeStart">Entre</label>
+				<input id="rangeStart" type="date" />
+				<label for="rangeEnd">e</label>
+				<input id="rangeEnd" type="date" />
+				<button id="loadRange" type="button">Filtrar</button>
+			</span>
 		</div>
 	</header>
 	<main>
+		<!-- Seção do gráfico temporal (inicialmente oculta) -->
+		<section class="cards" id="temporal_section" style="display:none;">
+			<div class="card card-progress-3" style="grid-column: span 5;">
+				<h3>Desempenho temporal</h3>
+				<p class="muted">Linha: Paletes Agendados (SIRF) • Coluna: Paletes Produzidos (WMS)</p>
+				<div id="temporal_chart" style="width:100%; min-height: 360px;"></div>
+			</div>
+			<div class="card card-progress-3" style="grid-column: span 5;">
+				<h3>Desempenho temporal (C3)</h3>
+				<p class="muted">Linha: Qtd Descarga C3 • Coluna: Qtd Carregamento C3</p>
+				<div id="temporal_chart_c3" style="width:100%; min-height: 360px;"></div>
+			</div>
+		</section>
 		<section class="cards" id="cards">
 			<div class="card">
 				<h3>Paletes Agendados SIRF</h3>
