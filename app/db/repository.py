@@ -26,11 +26,13 @@ class MetricaRepository:
         descargas_c3: int,
         carregamentos_c3: int,
         veiculos_pendentes: int,
-        paletes_pendentes: int,
+        paletes_pendentes: int = 0,
         *,
         criado_em=None,
     ) -> Metrica:
         # Se criado_em for fornecido (datetime naive ou timezone aware), usar direto
+        # paletes_pendentes agora é calculado automaticamente a partir da soma de Veiculos Pendentes (quantidade)
+        # portanto, ignoramos o valor passado na alimentação e iniciamos em 0; será recalculado após inserir os veículos
         kwargs = dict(
             paletes_agendados=paletes_agendados,
             paletes_produzidos=paletes_produzidos,
@@ -41,7 +43,7 @@ class MetricaRepository:
             descargas_c3=descargas_c3,
             carregamentos_c3=carregamentos_c3,
             veiculos_pendentes=veiculos_pendentes,
-            paletes_pendentes=paletes_pendentes,
+            paletes_pendentes=0,
         )
         if criado_em is not None:
             kwargs["criado_em"] = criado_em
@@ -106,8 +108,7 @@ class MetricaRepository:
             m.carregamentos_c3 = int(carregamentos_c3)
         if veiculos_pendentes is not None:
             m.veiculos_pendentes = int(veiculos_pendentes)
-        if paletes_pendentes is not None:
-            m.paletes_pendentes = int(paletes_pendentes)
+        # paletes_pendentes passa a ser calculado automaticamente; ignoramos alterações diretas aqui
         if criado_em is not None:
             m.criado_em = criado_em
         self.session.commit()
@@ -141,6 +142,18 @@ class VeiculoPendenteRepository:
         self.session.add(v)
         self.session.commit()
         self.session.refresh(v)
+        # Recalcula paletes_pendentes na métrica (soma das quantidades dos veículos pendentes)
+        try:
+            total = self.session.execute(
+                select(func.coalesce(func.sum(VeiculoPendente.quantidade), 0)).where(VeiculoPendente.metrica_id == metrica_id)
+            ).scalar_one()
+            m = self.session.get(Metrica, metrica_id)
+            if m is not None:
+                m.paletes_pendentes = int(total or 0)
+                self.session.commit()
+        except Exception:
+            # Não falha a operação principal caso o recálculo dê erro
+            pass
         return v
 
     def list_by_metrica(self, metrica_id: int):
@@ -150,13 +163,33 @@ class VeiculoPendenteRepository:
     def delete_by_metrica(self, metrica_id: int) -> None:
         self.session.execute(delete(VeiculoPendente).where(VeiculoPendente.metrica_id == metrica_id))
         self.session.commit()
+        # Após remover todos, zera paletes_pendentes
+        try:
+            m = self.session.get(Metrica, metrica_id)
+            if m is not None:
+                m.paletes_pendentes = 0
+                self.session.commit()
+        except Exception:
+            pass
 
     def delete(self, veiculo_id: int) -> bool:
         v = self.session.get(VeiculoPendente, veiculo_id)
         if not v:
             return False
+        metrica_id = int(v.metrica_id)
         self.session.delete(v)
         self.session.commit()
+        # Recalcula após exclusão
+        try:
+            total = self.session.execute(
+                select(func.coalesce(func.sum(VeiculoPendente.quantidade), 0)).where(VeiculoPendente.metrica_id == metrica_id)
+            ).scalar_one()
+            m = self.session.get(Metrica, metrica_id)
+            if m is not None:
+                m.paletes_pendentes = int(total or 0)
+                self.session.commit()
+        except Exception:
+            pass
         return True
 
 

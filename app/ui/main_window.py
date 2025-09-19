@@ -215,6 +215,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_edit_veics = QtWidgets.QPushButton("Editar Veículos…")
         self.btn_edit_veics.clicked.connect(self.on_edit_veiculos)
         self.paletes_pendentes = QtWidgets.QSpinBox(); self.paletes_pendentes.setRange(0, 10_000)
+        try:
+            self.paletes_pendentes.setReadOnly(True)
+            self.paletes_pendentes.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+            self.paletes_pendentes.setToolTip("Calculado automaticamente pela soma de Veículos pendentes (Total de Paletes)")
+        except Exception:
+            pass
         # Campo Observação (expansível ao foco)
         self.observacao = ExpandingTextEdit()
         self.observacao.setObjectName("obsEdit")
@@ -609,7 +615,6 @@ class MainWindow(QtWidgets.QMainWindow):
             descargas_c3: int
             carregamentos_c3: int
             veiculos_pendentes: int
-            paletes_pendentes: int
 
             @field_validator(
                 "paletes_agendados",
@@ -620,7 +625,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 "descargas_c3",
                 "carregamentos_c3",
                 "veiculos_pendentes",
-                "paletes_pendentes",
             )
             @classmethod
             def non_negative(cls, v: int) -> int:
@@ -638,7 +642,6 @@ class MainWindow(QtWidgets.QMainWindow):
             "descargas_c3": int(self.descargas_c3.value()),
             "carregamentos_c3": int(self.carregamentos_c3.value()),
             "veiculos_pendentes": int(self.veiculos_pendentes.value()),
-            "paletes_pendentes": int(self.paletes_pendentes.value()),
         }
 
         try:
@@ -664,7 +667,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 descargas_c3=payload.descargas_c3,
                 carregamentos_c3=payload.carregamentos_c3,
                 veiculos_pendentes=payload.veiculos_pendentes,
-                paletes_pendentes=payload.paletes_pendentes,
                 criado_em=criado_em,
             )
             # Salva veículos pendentes vinculados à métrica criada (agora com quantidade)
@@ -734,6 +736,12 @@ class MainWindow(QtWidgets.QMainWindow):
                     continue
             self._buffer_veiculos = norm
             self.veiculos_pendentes.setValue(len(self._buffer_veiculos))
+            # Atualiza prévia de Paletes Pendentes (soma das quantidades no buffer)
+            try:
+                total_pal = sum(int(q or 0) for _v, q, _p in norm)
+                self.paletes_pendentes.setValue(int(total_pal))
+            except Exception:
+                pass
 
     def on_edit_descargas(self) -> None:
         # Abre diálogo para editar veículos de Descarga C3 no buffer
@@ -898,7 +906,6 @@ class MainWindow(QtWidgets.QMainWindow):
         descargas_c3 = int(self.descargas_c3.value())
         carregamentos_c3 = int(self.carregamentos_c3.value())
         veiculos_pendentes = int(self.veiculos_pendentes.value())
-        paletes_pendentes = int(self.paletes_pendentes.value())
         observacao = (self.observacao.toPlainText().strip() or None)
         # Atualiza métrica principal
         from datetime import datetime as _dt
@@ -915,7 +922,6 @@ class MainWindow(QtWidgets.QMainWindow):
             descargas_c3=descargas_c3,
             carregamentos_c3=carregamentos_c3,
             veiculos_pendentes=veiculos_pendentes,
-            paletes_pendentes=paletes_pendentes,
             criado_em=criado_em,
         )
         if not ok:
