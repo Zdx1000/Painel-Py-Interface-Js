@@ -481,6 +481,67 @@ document.addEventListener("DOMContentLoaded", () => {
 						}
 					}
 				};
+				// Gráfico Total (somatório do período) - Agendados vs Produzidos
+				try{ if(window.__apexTemporalTotal){ window.__apexTemporalTotal.destroy(); } }catch{}
+					const totalAg = serieLine.reduce((a,b)=>a+(Number(b)||0),0);
+					const totalPr = serieCol.reduce((a,b)=>a+(Number(b)||0),0);
+				const totalPct = totalAg>0 ? Math.round((totalPr/totalAg)*100) : 0;
+					const totalSum = totalAg + totalPr;
+					const totalDiff = totalPr - totalAg;
+				const elTotal = document.querySelector('#temporal_total');
+				if(elTotal){
+						const optTotal = {
+							chart:{ type:'bar', height:360, stacked:true, stackType:'100%', background:'transparent', foreColor:'#cbd5e1',
+								animations:{ enabled:true, easing:'easeinout', speed:600, animateGradually:{ enabled:true, delay:120 }, dynamicAnimation:{ enabled:true, speed:350 } }
+							},
+							theme:{ mode:'dark' },
+							title:{ text: undefined },
+							xaxis:{ categories:['Total'], labels:{ style:{ colors:'#cbd5e1' } }, axisBorder:{ color:'#374151' }, axisTicks:{ color:'#374151' } },
+							yaxis:{ min:0, max:100, tickAmount:5, labels:{ style:{ colors:'#cbd5e1' }, formatter:(v)=> `${Math.round(v)}%` } },
+							plotOptions:{ bar:{ columnWidth:'60%', borderRadius:6, borderRadiusApplication:'end' } },
+							dataLabels:{ enabled:true, formatter:(val,opts)=>{
+								const idx = opts.seriesIndex;
+								const tot = totalSum;
+								if(tot<=0) return '0%';
+								const pctAg = Math.round((totalAg/tot)*100);
+								const pctPr = 100 - pctAg;
+								return `${idx===0 ? pctAg : pctPr}%`;
+							}, style:{ colors:['#e5e7eb'], fontSize:'12px', fontWeight:700 }, dropShadow:{ enabled:true, top:1, left:0, blur:2 } },
+						series:[
+							{ name:'Agendados', data:[ totalAg ] },
+							{ name:'Produzidos', data:[ totalPr ] }
+						],
+							colors:['#60a5fa','#3b82f6'],
+							fill:{ type:'gradient', gradient:{ shade:'dark', type:'vertical', shadeIntensity:0.25, gradientToColors:['#93c5fd','#60a5fa'], inverseColors:false, opacityFrom:0.9, opacityTo:0.95, stops:[0,90,100] } },
+							states:{ hover:{ filter:{ type:'darken', value:0.7 } }, active:{ allowMultipleDataPointsSelection:true } },
+							legend:{ show:true, position:'top', labels:{ colors:'#e5e7eb' } }, grid:{ borderColor:'#1f2937', strokeDashArray:3 },
+						tooltip:{
+							theme:'dark',
+								custom: ({series, seriesIndex, dataPointIndex, w}) => {
+								const ag = totalAg;
+								const pr = totalPr;
+								const tot = ag + pr;
+								const pctAg = tot>0 ? Math.round((ag/tot)*100) : 0;
+								const pctPr = 100 - pctAg;
+									const diff = pr - ag;
+									const diffColor = diff < 0 ? '#fca5a5' : (diff === 0 ? '#fcd34d' : '#86efac');
+									const cAg = (w && w.globals && w.globals.colors) ? w.globals.colors[0] : '#60a5fa';
+									const cPr = (w && w.globals && w.globals.colors) ? w.globals.colors[1] : '#3b82f6';
+									return `
+										<div class="apx-tip" style="background:#0b1220;border:1px solid #1f2937;color:#e5e7eb;padding:10px 12px;border-radius:10px;min-width:220px;box-shadow:0 6px 18px rgba(0,0,0,.35)">
+											<div style="font-weight:700;margin-bottom:8px;color:#93c5fd">Total (somatório do período)</div>
+											<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${cPr};margin-right:6px"></span>Produzidos</span><span style="color:#93c5fd">${Intl.NumberFormat('pt-BR').format(pr)} (${pctPr}%)</span></div>
+											<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${cAg};margin-right:6px"></span>Agendados</span><span style="color:#93c5fd">${Intl.NumberFormat('pt-BR').format(ag)} (${pctAg}%)</span></div>
+											<div style="display:flex;justify-content:space-between;gap:8px;margin-top:4px"><span>Diferença</span><span style="color:${diffColor}">${Intl.NumberFormat('pt-BR').format(diff)}</span></div>
+											<div style="margin-top:8px;border-top:1px solid #1f2937;padding-top:8px;display:flex;justify-content:space-between;gap:8px"><span>Soma</span><span>${Intl.NumberFormat('pt-BR').format(tot)}</span></div>
+										</div>
+									`;
+							}
+						}
+					};
+					window.__apexTemporalTotal = new ApexCharts(elTotal, optTotal);
+					window.__apexTemporalTotal.render();
+				}
 				window.__apexTemporal = new ApexCharts(el, options);
 				window.__apexTemporal.render();
 
@@ -488,36 +549,41 @@ document.addEventListener("DOMContentLoaded", () => {
 				const elC3 = document.querySelector('#temporal_chart_c3');
 				if(elC3){
 					if(window.__apexTemporalC3){ try{ window.__apexTemporalC3.destroy(); }catch{} }
-					// cores por coluna em C3 baseadas na % Carregamentos/Descargas
-					const colorsC3 = serieCarr.map((v,i)=>{
-						const total = Math.max(0, Number(serieDesc[i])||0);
-						const pct = total > 0 ? Math.round((v/total)*100) : 0;
-						if(pct <= 70) return '#dc2626';
-						if(pct <= 90) return '#f59e0b';
-						return '#16a34a';
-					});
-					const colDataC3 = categories.map((x,i)=>({x, y: serieCarr[i], fillColor: colorsC3[i]}));
+					// Removida lógica de cores por faixa no C3; usar cor uniforme padrão da série
+					const colDataC3 = categories.map((x,i)=>({x, y: serieCarr[i]}));
 					const lineDataC3 = categories.map((x,i)=>({x, y: serieDesc[i]}));
 					const allValsC3 = [...serieDesc, ...serieCarr];
 					let yMaxC3 = 0; for(const v of allValsC3){ yMaxC3 = Math.max(yMaxC3, Number(v)||0); }
 					if(!isFinite(yMaxC3) || yMaxC3 <= 0){ yMaxC3 = 1; }
 					const optionsC3 = {
-						chart:{ type:'line', height: 360, stacked:false, toolbar:{show:true}, background:'transparent', foreColor:'#cbd5e1' },
+						chart:{
+							type:'line', height: 360, stacked:false, toolbar:{show:true}, background:'transparent', foreColor:'#cbd5e1',
+							animations:{ enabled:true, easing:'easeinout', speed:600, animateGradually:{ enabled:true, delay:120 }, dynamicAnimation:{ enabled:true, speed:350 } },
+							dropShadow:{ enabled:true, enabledOnSeries:[0], top:2, left:0, blur:4, color:'#000000', opacity:0.2 }
+						},
 						theme:{ mode:'dark', palette:'palette10' },
 						title:{ text: undefined },
 						xaxis:{ categories, labels:{ rotate:-25, style:{ colors:'#cbd5e1', fontSize:'12px' } }, axisBorder:{ color:'#374151' }, axisTicks:{ color:'#374151' } },
 						yaxis:[
-							{ seriesName:'Descargas C3', title:{text:'Descargas C3', style:{ color:'#9ca3af' }}, labels:{ style:{ colors:'#cbd5e1' }}, min:0, max:yMaxC3 },
-							{ opposite:true, seriesName:'Carregamentos C3', title:{text:'Carregamentos C3', style:{ color:'#9ca3af' }}, labels:{ style:{ colors:'#cbd5e1' }}, min:0, max:yMaxC3 }
+							{ seriesName:'Descargas C3', title:{text:'Descargas C3', style:{ color:'#9ca3af' }}, labels:{ style:{ colors:'#cbd5e1' }, formatter: (val)=> Intl.NumberFormat('pt-BR').format(Math.round(val)) }, min:0, max:yMaxC3 },
+							{ opposite:true, seriesName:'Carregamentos C3', title:{text:'Carregamentos C3', style:{ color:'#9ca3af' }}, labels:{ style:{ colors:'#cbd5e1' }, formatter: (val)=> Intl.NumberFormat('pt-BR').format(Math.round(val)) }, min:0, max:yMaxC3 }
 						],
 						legend:{ position:'top', labels:{ colors:'#e5e7eb' } },
-						stroke:{ width:[3,0], curve:'smooth' }, markers:{ size:3, hover:{ size:6 } }, grid:{ borderColor:'#1f2937', strokeDashArray:3 },
-						plotOptions:{ bar:{ columnWidth:'55%', borderRadius:2 } }, dataLabels:{ enabled:false },
+						stroke:{ width:[3,0], curve:'smooth', lineCap:'round' },
+						markers:{ size:4, strokeWidth:2, strokeColors:'#0b1220', hover:{ size:7 } },
+						grid:{ borderColor:'#1f2937', strokeDashArray:3 },
+						plotOptions:{ bar:{ columnWidth:'50%', borderRadius:4 } }, dataLabels:{ enabled:false },
 						series:[
 							{ name:'Qtd Descarga C3', type:'line', data: lineDataC3 },
 							{ name:'Qtd Carregamento C3', type:'column', data: colDataC3 }
 						],
-						colors:['#60a5fa', '#3b82f6'], fill:{ opacity:1 }, distributed:true,
+						colors:['#60a5fa', '#2563eb'],
+						fill:{
+							opacity:1,
+							type:'gradient',
+							gradient:{ shade:'dark', type:'vertical', shadeIntensity:0.25, gradientToColors:['#93c5fd', '#60a5fa'], inverseColors:false, opacityFrom:0.9, opacityTo:0.95, stops:[0,90,100] }
+						},
+						distributed:false,
 						tooltip:{
 							shared:true, intersect:false, theme:'dark',
 							custom: function({series, dataPointIndex, w}){
@@ -527,17 +593,72 @@ document.addEventListener("DOMContentLoaded", () => {
 								const pct = de > 0 ? Math.round((ca/de)*100) : 0;
 								const [y,m,d] = String(date).split('-');
 								const dateFmt = (y && m && d) ? `${d}/${m}/${y}` : date;
-								const pctColor = pct<=70?'#fca5a5':(pct<=90?'#fcd34d':'#86efac');
 								return `
 									<div class="apx-tip" style="background:#0b1220;border:1px solid #1f2937;color:#e5e7eb;padding:8px 10px;border-radius:6px;min-width:200px">
 										<div style="font-weight:600;margin-bottom:6px;color:#93c5fd">${dateFmt}</div>
 										<div style="display:flex;justify-content:space-between;gap:8px"><span>Qtd Descarga C3</span><span style="color:#93c5fd">${de}</span></div>
-										<div style="display:flex;justify-content:space-between;gap:8px"><span>Qtd Carregamento C3</span><span style="color:${pctColor}">${ca} (${pct}%)</span></div>
+										<div style="display:flex;justify-content:space-between;gap:8px"><span>Qtd Carregamento C3</span><span>${ca} (${pct}%)</span></div>
 									</div>
 								`;
 							}
 						}
 					};
+					// Gráfico Total (somatório do período) - Descargas vs Carregamentos C3
+					try{ if(window.__apexTemporalTotalC3){ window.__apexTemporalTotalC3.destroy(); } }catch{}
+					const totalDe = serieDesc.reduce((a,b)=>a+(Number(b)||0),0);
+					const totalCa = serieCarr.reduce((a,b)=>a+(Number(b)||0),0);
+					const totalPctC3 = totalDe>0 ? Math.round((totalCa/totalDe)*100) : 0;
+					const elTotalC3 = document.querySelector('#temporal_total_c3');
+					if(elTotalC3){
+						const optTotalC3 = {
+							chart:{ type:'bar', height:360, stacked:true, stackType:'100%', background:'transparent', foreColor:'#cbd5e1',
+								animations:{ enabled:true, easing:'easeinout', speed:600, animateGradually:{ enabled:true, delay:120 }, dynamicAnimation:{ enabled:true, speed:350 } }
+							},
+							theme:{ mode:'dark' },
+							title:{ text: undefined },
+							xaxis:{ categories:['Total'], labels:{ style:{ colors:'#cbd5e1' } }, axisBorder:{ color:'#374151' }, axisTicks:{ color:'#374151' } },
+							yaxis:{ min:0, max:100, tickAmount:5, labels:{ style:{ colors:'#cbd5e1' }, formatter:(v)=> `${Math.round(v)}%` } },
+							plotOptions:{ bar:{ columnWidth:'60%', borderRadius:6, borderRadiusApplication:'end' } },
+							dataLabels:{ enabled:true, formatter:(val,opts)=>{
+								const idx = opts.seriesIndex;
+								const tot = totalDe + totalCa;
+								if(tot<=0) return '0%';
+								const pctDe = Math.round((totalDe/tot)*100);
+								const pctCa = 100 - pctDe;
+								return `${idx===0 ? pctDe : pctCa}%`;
+							}, style:{ colors:['#e5e7eb'], fontSize:'12px', fontWeight:700 }, dropShadow:{ enabled:true, top:1, left:0, blur:2 } },
+							series:[
+								{ name:'Descargas C3', data:[ totalDe ] },
+								{ name:'Carregamentos C3', data:[ totalCa ] }
+							],
+							colors:['#60a5fa','#2563eb'],
+							fill:{ type:'gradient', gradient:{ shade:'dark', type:'vertical', shadeIntensity:0.25, gradientToColors:['#93c5fd','#60a5fa'], inverseColors:false, opacityFrom:0.9, opacityTo:0.95, stops:[0,90,100] } },
+							states:{ hover:{ filter:{ type:'darken', value:0.7 } }, active:{ allowMultipleDataPointsSelection:true } },
+							legend:{ show:true, position:'top', labels:{ colors:'#e5e7eb' } }, grid:{ borderColor:'#1f2937', strokeDashArray:3 },
+							tooltip:{
+								theme:'dark',
+								custom: ({series, seriesIndex, dataPointIndex, w}) => {
+									const de = totalDe;
+									const ca = totalCa;
+									const tot = de + ca;
+									const pctDe = tot>0 ? Math.round((de/tot)*100) : 0;
+									const pctCa = 100 - pctDe;
+									const cDe = (w && w.globals && w.globals.colors) ? w.globals.colors[0] : '#60a5fa';
+									const cCa = (w && w.globals && w.globals.colors) ? w.globals.colors[1] : '#2563eb';
+									return `
+										<div class="apx-tip" style="background:#0b1220;border:1px solid #1f2937;color:#e5e7eb;padding:10px 12px;border-radius:10px;min-width:220px;box-shadow:0 6px 18px rgba(0,0,0,.35)">
+											<div style="font-weight:700;margin-bottom:8px;color:#93c5fd">Total (somatório do período)</div>
+											<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${cCa};margin-right:6px"></span>Carregamentos C3</span><span style="color:#93c5fd">${Intl.NumberFormat('pt-BR').format(ca)} (${pctCa}%)</span></div>
+											<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${cDe};margin-right:6px"></span>Descargas C3</span><span style="color:#93c5fd">${Intl.NumberFormat('pt-BR').format(de)} (${pctDe}%)</span></div>
+											<div style="margin-top:8px;border-top:1px solid #1f2937;padding-top:8px;display:flex;justify-content:space-between;gap:8px"><span>Soma</span><span>${Intl.NumberFormat('pt-BR').format(tot)}</span></div>
+										</div>
+									`;
+								}
+							}
+						};
+						window.__apexTemporalTotalC3 = new ApexCharts(elTotalC3, optTotalC3);
+						window.__apexTemporalTotalC3.render();
+					}
 					window.__apexTemporalC3 = new ApexCharts(elC3, optionsC3);
 					window.__apexTemporalC3.render();
 				}

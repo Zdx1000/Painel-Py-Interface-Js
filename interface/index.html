@@ -41,12 +41,26 @@
 			<div class="card card-progress-3" style="grid-column: span 5;">
 				<h3>Desempenho temporal</h3>
 				<p class="muted">Linha: Paletes Agendados (SIRF) • Coluna: Paletes Produzidos (WMS)</p>
-				<div id="temporal_chart" style="width:100%; min-height: 360px;"></div>
+				<div class="temporalRow" style="display:flex; gap:12px; align-items:stretch;">
+					<div style="flex:1 1 85%; min-width:0;">
+						<div id="temporal_chart" style="width:100%; min-height: 360px;"></div>
+					</div>
+					<div style="flex:0 0 15%; min-width:160px;">
+						<div id="temporal_total" style="width:100%; min-height: 360px;"></div>
+					</div>
+				</div>
 			</div>
 			<div class="card card-progress-3" style="grid-column: span 5;">
 				<h3>Desempenho temporal (C3)</h3>
 				<p class="muted">Linha: Qtd Descarga C3 • Coluna: Qtd Carregamento C3</p>
-				<div id="temporal_chart_c3" style="width:100%; min-height: 360px;"></div>
+				<div class="temporalRow" style="display:flex; gap:12px; align-items:stretch;">
+					<div style="flex:1 1 85%; min-width:0;">
+						<div id="temporal_chart_c3" style="width:100%; min-height: 360px;"></div>
+					</div>
+					<div style="flex:0 0 15%; min-width:160px;">
+						<div id="temporal_total_c3" style="width:100%; min-height: 360px;"></div>
+					</div>
+				</div>
 			</div>
 		</section>
 		<section class="cards" id="cards">
