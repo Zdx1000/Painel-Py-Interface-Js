@@ -32,6 +32,8 @@ class VeiculosDialog(QtWidgets.QDialog):
             except Exception:
                 continue
         self._rows: List[Tuple[str, int, int]] = norm_rows
+        # Índice da linha atualmente em edição (None quando não está editando)
+        self._edit_row: Optional[int] = None
 
         layout = QtWidgets.QVBoxLayout(self)
 
@@ -43,10 +45,15 @@ class VeiculosDialog(QtWidgets.QDialog):
         self.pct_input = QtWidgets.QSpinBox(); self.pct_input.setRange(0, 100); self.pct_input.setSuffix(" %")
         self.btn_add = QtWidgets.QPushButton("Adicionar")
         self.btn_add.clicked.connect(self._on_add)
+        # Botão cancelar edição (invisível por padrão)
+        self.btn_cancel_edit = QtWidgets.QPushButton("Cancelar")
+        self.btn_cancel_edit.setVisible(False)
+        self.btn_cancel_edit.clicked.connect(self._cancel_edit)
         e_lay.addWidget(self.veh_input, 1)
         e_lay.addWidget(self.qty_input)
         e_lay.addWidget(self.pct_input)
         e_lay.addWidget(self.btn_add)
+        e_lay.addWidget(self.btn_cancel_edit)
         layout.addWidget(self.editor)
 
         # Tabela
@@ -91,7 +98,14 @@ class VeiculosDialog(QtWidgets.QDialog):
         if q < 0:
             QtWidgets.QMessageBox.warning(self, "Valor inválido", "Quantidade não pode ser negativa.")
             return
-        self._rows.append((v, q, p))
+        # Se há linha em edição, atualiza; caso contrário, adiciona nova
+        if self._edit_row is not None and 0 <= self._edit_row < len(self._rows):
+            self._rows[self._edit_row] = (v, q, p)
+            self._edit_row = None
+            self.btn_add.setText("Adicionar")
+            self.btn_cancel_edit.setVisible(False)
+        else:
+            self._rows.append((v, q, p))
         self.veh_input.clear()
         self.qty_input.setValue(0)
         self.pct_input.setValue(0)
@@ -99,8 +113,56 @@ class VeiculosDialog(QtWidgets.QDialog):
 
     def _on_remove(self, row: int) -> None:
         if 0 <= row < len(self._rows):
+            # Confirmação antes de remover
+            resp = QtWidgets.QMessageBox.question(
+                self,
+                "Remover item",
+                f"Deseja remover o veículo '{self._rows[row][0]}'?",
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                QtWidgets.QMessageBox.No,
+            )
+            if resp != QtWidgets.QMessageBox.Yes:
+                return
             del self._rows[row]
+            # Se remover a linha em edição, cancela a edição
+            if self._edit_row is not None:
+                if self._edit_row == row:
+                    self._cancel_edit()
+                elif self._edit_row > row:
+                    # Ajusta índice de edição se necessário
+                    self._edit_row -= 1
             self._refresh_table()
+
+    def keyPressEvent(self, e: QtGui.QKeyEvent) -> None:  # type: ignore[override]
+        # Enter/Return: aciona Adicionar/Salvar quando editor tem foco
+        if e.key() in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter):
+            if self.editor.isVisible() and (self.veh_input.hasFocus() or self.qty_input.hasFocus() or self.pct_input.hasFocus()):
+                self._on_add()
+                return
+        # ESC: cancela edição se estiver editando, senão comportamento padrão (fecha diálogo se aplicável)
+        if e.key() == QtCore.Qt.Key_Escape:
+            if self._edit_row is not None:
+                self._cancel_edit()
+                return
+        super().keyPressEvent(e)
+
+    def _on_edit(self, row: int) -> None:
+        if 0 <= row < len(self._rows):
+            veic, qtd, pct = self._rows[row]
+            self.veh_input.setText(veic)
+            self.qty_input.setValue(int(qtd))
+            self.pct_input.setValue(int(pct))
+            self._edit_row = int(row)
+            self.btn_add.setText("Salvar")
+            self.btn_cancel_edit.setVisible(True)
+
+    def _cancel_edit(self) -> None:
+        self._edit_row = None
+        self.veh_input.clear()
+        self.qty_input.setValue(0)
+        self.pct_input.setValue(0)
+        self.btn_add.setText("Adicionar")
+        self.btn_cancel_edit.setVisible(False)
 
     def _refresh_table(self) -> None:
         self.table.setRowCount(len(self._rows))
@@ -108,6 +170,20 @@ class VeiculosDialog(QtWidgets.QDialog):
             self.table.setItem(i, 0, QtWidgets.QTableWidgetItem(veic))
             self.table.setItem(i, 1, QtWidgets.QTableWidgetItem(str(qtd)))
             self.table.setItem(i, 2, QtWidgets.QTableWidgetItem(f"{pct}%"))
-            btn = QtWidgets.QPushButton("Remover")
-            btn.clicked.connect(lambda _=False, r=i: self._on_remove(r))
-            self.table.setCellWidget(i, 3, btn)
+            # Ações: Editar e Remover (somente quando não for read-only)
+            actions = QtWidgets.QWidget()
+            hl = QtWidgets.QHBoxLayout(actions)
+            hl.setContentsMargins(0, 0, 0, 0)
+            hl.setSpacing(6)
+            if not self._read_only:
+                btn_edit = QtWidgets.QPushButton("Editar")
+                btn_edit.setToolTip("Editar este veículo")
+                btn_edit.clicked.connect(lambda _=False, r=i: self._on_edit(r))
+                btn_del = QtWidgets.QPushButton("Remover")
+                btn_del.setObjectName("danger")
+                btn_del.setToolTip("Remover este veículo")
+                btn_del.clicked.connect(lambda _=False, r=i: self._on_remove(r))
+                hl.addWidget(btn_edit)
+                hl.addWidget(btn_del)
+            actions.setLayout(hl)
+            self.table.setCellWidget(i, 3, actions)
