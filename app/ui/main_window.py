@@ -216,6 +216,23 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_edit_veics.clicked.connect(self.on_edit_veiculos)
         self.paletes_pendentes = QtWidgets.QSpinBox(); self.paletes_pendentes.setRange(0, 10_000)
         try:
+            # Campos derivados: apenas visualização
+            self.descargas_c3.setReadOnly(True)
+            self.descargas_c3.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+            self.descargas_c3.setToolTip("Atualizado automaticamente pela quantidade de itens em 'Editar Descargas C3…'")
+
+            self.carregamentos_c3.setReadOnly(True)
+            self.carregamentos_c3.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+            self.carregamentos_c3.setToolTip("Atualizado automaticamente pela quantidade de itens em 'Editar Carregamentos C3…'")
+
+            self.veiculos_pendentes.setReadOnly(True)
+            self.veiculos_pendentes.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+            self.veiculos_pendentes.setToolTip("Atualizado automaticamente pela quantidade de itens em 'Editar Veículos…'")
+
+            self.fichas_antecipadas.setReadOnly(True)
+            self.fichas_antecipadas.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+            self.fichas_antecipadas.setToolTip("Atualizado automaticamente pela quantidade de itens em 'Editar Antecipados…'")
+
             self.paletes_pendentes.setReadOnly(True)
             self.paletes_pendentes.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
             self.paletes_pendentes.setToolTip("Calculado automaticamente pela soma de Veículos pendentes (Total de Paletes)")
@@ -735,7 +752,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 except Exception:
                     continue
             self._buffer_veiculos = norm
-            self.veiculos_pendentes.setValue(len(self._buffer_veiculos))
+            # Alimenta automaticamente Veículos pendentes com a contagem de linhas
+            try:
+                self.veiculos_pendentes.setValue(len(self._buffer_veiculos))
+            except Exception:
+                pass
             # Atualiza prévia de Paletes Pendentes (soma das quantidades no buffer)
             try:
                 total_pal = sum(int(q or 0) for _v, q, _p in norm)
@@ -748,6 +769,11 @@ class MainWindow(QtWidgets.QMainWindow):
         dlg = VeiculosDialog(self, initial=self._buffer_descargas, read_only=False, title="Veículos Descarga C3")
         if dlg.exec() == QtWidgets.QDialog.Accepted:
             self._buffer_descargas = dlg.get_rows()
+            # Alimenta automaticamente a Qtd Descargas (C3) com a contagem de linhas
+            try:
+                self.descargas_c3.setValue(len(self._buffer_descargas))
+            except Exception:
+                pass
 
     def on_edit_antecipados(self) -> None:
         # Abre diálogo para editar veículos antecipados no buffer (mantendo quantidade)
@@ -765,12 +791,22 @@ class MainWindow(QtWidgets.QMainWindow):
                 except Exception:
                     continue
             self._buffer_antecipados = norm
+            # Alimenta automaticamente Fichas antecipadas com a contagem de linhas
+            try:
+                self.fichas_antecipadas.setValue(len(self._buffer_antecipados))
+            except Exception:
+                pass
 
     def on_edit_carregamentos(self) -> None:
         # Abre diálogo para editar veículos de Carregamento C3 no buffer
         dlg = VeiculosDialog(self, initial=self._buffer_carregamentos, read_only=False, title="Veículos Carregamento C3")
         if dlg.exec() == QtWidgets.QDialog.Accepted:
             self._buffer_carregamentos = dlg.get_rows()
+            # Alimenta automaticamente a Qtd Carregamentos (C3) com a contagem de linhas
+            try:
+                self.carregamentos_c3.setValue(len(self._buffer_carregamentos))
+            except Exception:
+                pass
 
     def on_table_double_click(self, index: QtCore.QModelIndex) -> None:
         if not index.isValid():
