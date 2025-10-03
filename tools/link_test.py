@@ -22,6 +22,8 @@ m = met_repo.add(
     observacao=None,
     descargas_c3=1,
     carregamentos_c3=2,
+    chamado_granel=0,
+    paletizada=0,
     veiculos_pendentes=0,
     paletes_pendentes=3,
 )

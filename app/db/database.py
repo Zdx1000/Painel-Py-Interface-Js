@@ -64,6 +64,18 @@ def init_db() -> None:
                     conn.commit()
                 except Exception:
                     pass
+            if "chamado_granel" not in cols:
+                conn.execute(text("ALTER TABLE metricas ADD COLUMN chamado_granel INTEGER NOT NULL DEFAULT 0"))
+                try:
+                    conn.commit()
+                except Exception:
+                    pass
+            if "paletizada" not in cols:
+                conn.execute(text("ALTER TABLE metricas ADD COLUMN paletizada INTEGER NOT NULL DEFAULT 0"))
+                try:
+                    conn.commit()
+                except Exception:
+                    pass
             # Migração leve para veiculos_descarga_c3.quantidade
             rows_vd = conn.execute(text("PRAGMA table_info(veiculos_descarga_c3)")).fetchall()
             cols_vd = {r[1] for r in rows_vd}

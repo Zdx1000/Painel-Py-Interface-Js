@@ -32,6 +32,8 @@ class MetricaTableModel(QtCore.QAbstractTableModel):
         "Fichas finalizadas",
         "Descargas (C3)",
         "Carregamentos (C3)",
+        "Chamado Granel",
+        "Paletizada",
         "Veículos Pendentes",
         "Paletes Pendentes",
         "Fichas antecipadas",
@@ -210,6 +212,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.veiculos_finalizados = QtWidgets.QSpinBox(); self.veiculos_finalizados.setRange(0, 10_000)
         self.descargas_c3 = QtWidgets.QSpinBox(); self.descargas_c3.setRange(0, 10_000)
         self.carregamentos_c3 = QtWidgets.QSpinBox(); self.carregamentos_c3.setRange(0, 10_000)
+        self.chamado_granel = QtWidgets.QSpinBox(); self.chamado_granel.setRange(0, 10_000)
+        self.chamado_granel.setToolTip("Informe a quantidade de chamados para granel no período")
+        self.paletizada = QtWidgets.QSpinBox(); self.paletizada.setRange(0, 10_000)
+        self.paletizada.setToolTip("Informe a quantidade de itens paletizados no período")
         self.veiculos_pendentes = QtWidgets.QSpinBox(); self.veiculos_pendentes.setRange(0, 10_000)
         self.fichas_antecipadas = QtWidgets.QSpinBox(); self.fichas_antecipadas.setRange(0, 10_000)
         self.btn_edit_veics = QtWidgets.QPushButton("Editar Veículos…")
@@ -276,6 +282,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.veiculos_finalizados,
             self.descargas_c3,
             self.carregamentos_c3,
+            self.chamado_granel,
+            self.paletizada,
             self.veiculos_pendentes,
             self.fichas_antecipadas,
             self.paletes_pendentes,
@@ -346,6 +354,11 @@ class MainWindow(QtWidgets.QMainWindow):
         # Observação à direita de Fichas antecipadas
         grid.addWidget(QtWidgets.QLabel("Observação"), 4, 2, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         grid.addWidget(self.observacao, 4, 3)
+        # Linha 5: Chamado Granel | Paletizada
+        grid.addWidget(QtWidgets.QLabel("Chamado Granel"), 5, 0, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.chamado_granel, 5, 1)
+        grid.addWidget(QtWidgets.QLabel("Paletizada"), 5, 2, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.paletizada, 5, 3)
 
         top = QtWidgets.QHBoxLayout()
         top.setSpacing(16)
@@ -397,7 +410,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.table.doubleClicked.connect(self.on_table_double_click)
         # Destaque interativo nas colunas com ação de duplo clique
         self.table.setMouseTracking(True)
-        self._interactive_cols = {5, 6, 7, 9, 11}
+        self._interactive_cols = {5, 6, 9, 11, 13}
         self._delegate = InteractiveHighlightDelegate(self.table, self._interactive_cols)
         self.table.setItemDelegate(self._delegate)
         # Atualiza hover/cursor dinamicamente
@@ -563,6 +576,8 @@ class MainWindow(QtWidgets.QMainWindow):
                     m.veiculos_finalizados,
                     m.descargas_c3,
                     m.carregamentos_c3,
+                    m.chamado_granel,
+                    m.paletizada,
                     m.veiculos_pendentes,
                     m.paletes_pendentes,
                     getattr(m, "fichas_antecipadas", 0),
@@ -631,6 +646,8 @@ class MainWindow(QtWidgets.QMainWindow):
             observacao: str | None
             descargas_c3: int
             carregamentos_c3: int
+            chamado_granel: int
+            paletizada: int
             veiculos_pendentes: int
 
             @field_validator(
@@ -641,6 +658,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 "fichas_antecipadas",
                 "descargas_c3",
                 "carregamentos_c3",
+                "chamado_granel",
+                "paletizada",
                 "veiculos_pendentes",
             )
             @classmethod
@@ -658,6 +677,8 @@ class MainWindow(QtWidgets.QMainWindow):
             "observacao": (self.observacao.toPlainText().strip() or None),
             "descargas_c3": int(self.descargas_c3.value()),
             "carregamentos_c3": int(self.carregamentos_c3.value()),
+            "chamado_granel": int(self.chamado_granel.value()),
+            "paletizada": int(self.paletizada.value()),
             "veiculos_pendentes": int(self.veiculos_pendentes.value()),
         }
 
@@ -683,6 +704,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 observacao=payload.observacao,
                 descargas_c3=payload.descargas_c3,
                 carregamentos_c3=payload.carregamentos_c3,
+                chamado_granel=payload.chamado_granel,
+                paletizada=payload.paletizada,
                 veiculos_pendentes=payload.veiculos_pendentes,
                 criado_em=criado_em,
             )
@@ -722,6 +745,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.veiculos_finalizados,
             self.descargas_c3,
             self.carregamentos_c3,
+            self.chamado_granel,
+            self.paletizada,
             self.veiculos_pendentes,
             self.fichas_antecipadas,
             self.paletes_pendentes,
@@ -815,7 +840,7 @@ class MainWindow(QtWidgets.QMainWindow):
         row = index.row()
         metrica_id = int(self.model._rows[row][0])
         # Coluna de ações
-        if col == 11:
+        if col == 13:
             self._show_actions_menu(row, metrica_id, index)
             return
         # Descargas (C3) coluna 5 abre veículos de descarga C3
@@ -826,14 +851,14 @@ class MainWindow(QtWidgets.QMainWindow):
             dlg.exec()
             return
         # Veículos Pendentes coluna 7 (0-based)
-        if col == 7:
+        if col == 9:
             items = self.veic_repo.list_by_metrica(metrica_id)
             initial = [(it.veiculo, int(getattr(it, 'quantidade', 0)), int(it.porcentagem)) for it in items]
             dlg = VeiculosDialog(self, initial=initial, read_only=True, title=f"Veículos Pendentes (Métrica {metrica_id})")
             dlg.exec()
             return
         # Fichas antecipadas coluna 9 (0-based)
-        if col == 9:
+        if col == 11:
             items = self.antec_repo.list_by_metrica(metrica_id)
             initial = [(it.veiculo, int(getattr(it, 'quantidade', 0)), int(it.porcentagem)) for it in items]
             dlg = VeiculosDialog(self, initial=initial, read_only=True, title=f"Veículos Antecipados (Métrica {metrica_id})")
@@ -899,6 +924,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.veiculos_finalizados.setValue(int(m.veiculos_finalizados))
         self.descargas_c3.setValue(int(m.descargas_c3))
         self.carregamentos_c3.setValue(int(m.carregamentos_c3))
+        self.chamado_granel.setValue(int(getattr(m, "chamado_granel", 0)))
+        self.paletizada.setValue(int(getattr(m, "paletizada", 0)))
         self.veiculos_pendentes.setValue(int(m.veiculos_pendentes))
         self.fichas_antecipadas.setValue(int(getattr(m, "fichas_antecipadas", 0)))
         self.paletes_pendentes.setValue(int(m.paletes_pendentes))
@@ -941,6 +968,8 @@ class MainWindow(QtWidgets.QMainWindow):
         fichas_antecipadas = int(self.fichas_antecipadas.value())
         descargas_c3 = int(self.descargas_c3.value())
         carregamentos_c3 = int(self.carregamentos_c3.value())
+        chamado_granel = int(self.chamado_granel.value())
+        paletizada = int(self.paletizada.value())
         veiculos_pendentes = int(self.veiculos_pendentes.value())
         observacao = (self.observacao.toPlainText().strip() or None)
         # Atualiza métrica principal
@@ -957,6 +986,8 @@ class MainWindow(QtWidgets.QMainWindow):
             observacao=observacao,
             descargas_c3=descargas_c3,
             carregamentos_c3=carregamentos_c3,
+            chamado_granel=chamado_granel,
+            paletizada=paletizada,
             veiculos_pendentes=veiculos_pendentes,
             criado_em=criado_em,
         )
@@ -1004,6 +1035,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.veiculos_finalizados,
             self.descargas_c3,
             self.carregamentos_c3,
+            self.chamado_granel,
+            self.paletizada,
             self.veiculos_pendentes,
             self.fichas_antecipadas,
             self.paletes_pendentes,

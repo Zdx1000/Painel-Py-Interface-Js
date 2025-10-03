@@ -23,6 +23,8 @@ class Metrica(Base):
     fichas_antecipadas: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     descargas_c3: Mapped[int] = mapped_column(Integer, nullable=False)
     carregamentos_c3: Mapped[int] = mapped_column(Integer, nullable=False)
+    chamado_granel: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    paletizada: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     veiculos_pendentes: Mapped[int] = mapped_column(Integer, nullable=False)
     paletes_pendentes: Mapped[int] = mapped_column(Integer, nullable=False)
     observacao: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

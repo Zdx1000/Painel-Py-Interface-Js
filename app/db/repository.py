@@ -25,6 +25,8 @@ class MetricaRepository:
         observacao: str | None,
         descargas_c3: int,
         carregamentos_c3: int,
+        chamado_granel: int,
+        paletizada: int,
         veiculos_pendentes: int,
         paletes_pendentes: int = 0,
         *,
@@ -42,6 +44,8 @@ class MetricaRepository:
             observacao=observacao,
             descargas_c3=descargas_c3,
             carregamentos_c3=carregamentos_c3,
+            chamado_granel=chamado_granel,
+            paletizada=paletizada,
             veiculos_pendentes=veiculos_pendentes,
             paletes_pendentes=0,
         )
@@ -82,6 +86,8 @@ class MetricaRepository:
         observacao: str | None | None = None,
         descargas_c3: int | None = None,
         carregamentos_c3: int | None = None,
+        chamado_granel: int | None = None,
+        paletizada: int | None = None,
         veiculos_pendentes: int | None = None,
         paletes_pendentes: int | None = None,
         criado_em=None,
@@ -106,6 +112,10 @@ class MetricaRepository:
             m.descargas_c3 = int(descargas_c3)
         if carregamentos_c3 is not None:
             m.carregamentos_c3 = int(carregamentos_c3)
+        if chamado_granel is not None:
+            m.chamado_granel = int(chamado_granel)
+        if paletizada is not None:
+            m.paletizada = int(paletizada)
         if veiculos_pendentes is not None:
             m.veiculos_pendentes = int(veiculos_pendentes)
         # paletes_pendentes passa a ser calculado automaticamente; ignoramos alterações diretas aqui

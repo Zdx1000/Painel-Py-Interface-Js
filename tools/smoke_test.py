@@ -22,6 +22,8 @@ if __name__ == "__main__":
         observacao=None,
         descargas_c3=1,
         carregamentos_c3=1,
+        chamado_granel=0,
+        paletizada=0,
         veiculos_pendentes=2,
         paletes_pendentes=5,
     )
