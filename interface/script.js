@@ -206,22 +206,26 @@ async function carregarDia(){
 
 		// Extra quando produziu acima do agendado
 		const extraBlock = document.getElementById("extra_block");
+		const extraFill = document.getElementById("prog_extra_fill");
 		const extra = feitoRaw - total;
 		if(extraBlock){
 			if(extra > 0 && total > 0){
 				const extraPct = Math.round((extra/total)*100);
 				setText("prog_extra_pct", extraPct);
-				setText("prog_extra_pct2", extraPct);
-				const extraFill = document.getElementById("prog_extra_fill");
 				if(extraFill){
 					// limite visual de 100% para a barra extra
 					const width = Math.max(5, Math.min(100, extraPct));
 					extraFill.style.width = width + "%";
+					extraFill.classList.add("alert");
 				}
 
 				extraBlock.style.display = "block";
 			}else{
 				extraBlock.style.display = "none";
+				if(extraFill){
+					extraFill.style.width = "0%";
+					extraFill.classList.remove("alert");
+				}
 			}
 		}
 
@@ -287,6 +291,50 @@ async function carregarDia(){
 			if(laVP) laVP.textContent = String(vpA);
 			if(lbVP) lbVP.textContent = String(vpB);
 		}
+
+		// Comparativo Veículo Granel x Veículo Paletizado
+		const vgA = Math.max(0, parseInt(t.chamado_granel || 0, 10));
+		const vgB = Math.max(0, parseInt(t.paletizada || 0, 10));
+		const vgMax = Math.max(1, vgA, vgB);
+		setText("dual_granel_val_a", vgA);
+		setText("dual_granel_val_b", vgB);
+		const vgFillA = document.getElementById("dual_granel_fill_a");
+		const vgFillB = document.getElementById("dual_granel_fill_b");
+		if(vgFillA) vgFillA.style.width = Math.round((vgA/vgMax)*100) + "%";
+		if(vgFillB) vgFillB.style.width = Math.round((vgB/vgMax)*100) + "%";
+
+		const sumVG = Math.max(0, vgA + vgB);
+		const donutVG = document.getElementById("donut_granel");
+		const laVG = document.getElementById("donut_granel_a");
+		const lbVG = document.getElementById("donut_granel_b");
+		const pctVG_A = document.getElementById("donut_granel_pct_a");
+		const pctVG_B = document.getElementById("donut_granel_pct_b");
+		if(donutVG){
+			let pctA3 = 0, pctB3 = 0;
+			if(sumVG > 0){
+				pctA3 = Math.round((vgA / sumVG) * 100);
+				pctB3 = 100 - pctA3;
+			}
+			const angle3 = Math.round((pctA3/100) * 360);
+			donutVG.style.setProperty("--angA", angle3 + "deg");
+			if(laVG) laVG.textContent = String(vgA);
+			if(lbVG) lbVG.textContent = String(vgB);
+			if(pctVG_A) pctVG_A.textContent = pctA3 + "%";
+			if(pctVG_B) pctVG_B.textContent = pctB3 + "%";
+		}
+		setText("chip_granel_total", sumVG);
+		setText("chip_granel_diff", Math.abs(vgA - vgB));
+		let leaderLabel = "—";
+		if(sumVG > 0){
+			if(vgA === vgB){
+				leaderLabel = "Empate";
+			}else if(vgA > vgB){
+				leaderLabel = "Granel";
+			}else{
+				leaderLabel = "Paletizado";
+			}
+		}
+		setText("chip_granel_leader", leaderLabel);
 
 		// Progresso do dia (Fichas finalizadas / Total de fichas)
 		const fichasTotal = Math.max(0, parseInt(t.total_fichas||0,10));

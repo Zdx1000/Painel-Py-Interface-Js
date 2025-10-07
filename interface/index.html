@@ -101,7 +101,7 @@
 				<div class="extra" id="extra_block" style="display:none">
 					<div class="progressRow">
 						<span class="label">Extra</span>
-						<span class="numbers"><span id="prog_extra_pct">0</span>% — Foi realizado a mais dos Paletes Agendados</span>
+						<span class="numbers extra-alert" id="prog_extra_msg"><span id="prog_extra_pct">0</span>% — Excedeu a capacidade de paletes produzidos</span>
 					</div>
 					<div class="progressWrap extra"><div class="progressFill extra" id="prog_extra_fill" style="width:0%"></div></div>
 				</div>
@@ -116,6 +116,51 @@
 					<span class="numbers"><span id="fichas_done">0</span>/<span id="fichas_total">0</span> (<span id="fichas_pct">0</span>%)</span>
 				</div>
 				<div class="progressWrap"><div class="progressFill" id="fichas_fill" style="width:0%"></div></div>
+			</div>
+
+			<div class="card card-progress-3">
+				<h3>Veículos Granel x Paletizado</h3>
+				<p class="muted">Comparativo diário dos chamados (valores absolutos)</p>
+				<div class="dualRow">
+					<span class="label">Veículo Granel</span>
+					<span class="numbers" id="dual_granel_val_a">0</span>
+				</div>
+				<div class="progressWrap"><div class="progressFill bar-a" id="dual_granel_fill_a" style="width:0%"></div></div>
+				<div class="dualRow">
+					<span class="label">Veículo Paletizado</span>
+					<span class="numbers" id="dual_granel_val_b">0</span>
+				</div>
+				<div class="progressWrap"><div class="progressFill bar-b" id="dual_granel_fill_b" style="width:0%"></div></div>
+			</div>
+
+			<div class="card card-progress-3 card-dual card-donut">
+				<h3>Distribuição Granel x Paletizado</h3>
+				<p class="muted">Percentual e totais acumulados do dia</p>
+				<div class="donutRow">
+					<div class="donut" id="donut_granel" aria-label="Donut Veículo Granel x Veículo Paletizado">
+						<div class="donutHole">
+							<div class="donutLabel"><span id="donut_granel_a">0</span>/<span id="donut_granel_b">0</span></div>
+						</div>
+					</div>
+					<div class="donutLegend">
+						<div><span class="dot a"></span>Granel: <span id="donut_granel_pct_a">0%</span></div>
+						<div><span class="dot b"></span>Paletizado: <span id="donut_granel_pct_b">0%</span></div>
+					</div>
+					<div class="chipRow">
+						<div class="chip">
+							<span>Total Chamados</span>
+							<strong id="chip_granel_total">0</strong>
+						</div>
+						<div class="chip">
+							<span>Diferença Absoluta</span>
+							<strong id="chip_granel_diff">0</strong>
+						</div>
+						<div class="chip">
+							<span>Liderança</span>
+							<strong id="chip_granel_leader">—</strong>
+						</div>
+					</div>
+				</div>
 			</div>
 
 		</section>

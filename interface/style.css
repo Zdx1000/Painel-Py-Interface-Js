@@ -162,6 +162,13 @@ main{padding:16px}
 .card-progress{grid-column:span 2}
 .card-progress-3{grid-column:span 3}
 .card-dual{grid-column:span 2}
+.card-donut{align-items:center;text-align:center}
+.card-donut .donutRow{display:flex;gap:20px;align-items:center;justify-content:center;margin:10px 0}
+.card-donut .donutLegend{display:flex;flex-direction:column;gap:6px;text-align:left}
+.card-donut .chipRow{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.card-donut .chip{background:rgba(29,78,216,0.12);border:1px solid rgba(59,130,246,0.35);border-radius:10px;padding:10px 14px;min-width:140px;display:flex;flex-direction:column;gap:4px;align-items:center}
+.card-donut .chip span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+.card-donut .chip strong{font-size:18px;color:#e6eef5}
 
 .card-progress .progressRow{
 	display:flex;justify-content:space-between;align-items:center;
@@ -169,6 +176,14 @@ main{padding:16px}
 }
 .card-progress .numbers{
 	color:#cfe0ff;font-weight:700;font-size:14px;
+}
+.numbers.extra-alert{
+	color:#f0d695 !important;
+	font-weight:800;
+	text-shadow:0 0 10px rgba(251,191,36,0.45) !important;
+}
+.numbers.extra-alert span{
+	color:inherit;
 }
 .progressWrap{
 	position:relative;height:16px;
@@ -183,10 +198,16 @@ main{padding:16px}
 	box-shadow:0 2px 8px rgba(34,197,94,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
 	transition:width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
+.progressFill.bar-a{background:linear-gradient(90deg,#60a5fa 0%,#3b82f6 100%)}
+.progressFill.bar-b{background:linear-gradient(90deg,#34d399 0%,#10b981 100%)}
 .progressWrap.extra{height:12px;margin-top:8px}
 .progressFill.extra{
 	background:linear-gradient(90deg,#3b82f6 0%,#60a5fa 50%,#93c5fd 100%);
 	box-shadow:0 2px 8px rgba(245,158,11,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.progressFill.extra.alert{
+	background:linear-gradient(90deg,#facc15 0%,#f59e0b 100%);
+	box-shadow:0 2px 10px rgba(250,204,21,0.5), inset 0 1px 0 rgba(255,255,255,0.25);
 }
 /* Comparativos e gráficos aprimorados */
 .dualRow{display:flex;justify-content:space-between;align-items:center;margin-top:8px;margin-bottom:10px}
@@ -229,6 +250,7 @@ main{padding:16px}
 	transition:transform 0.3s ease;
 }
 .donut:hover{transform:scale(1.05)}
+
 .donutHole{
 	position:absolute;inset:16px;border-radius:50%;
 	background:linear-gradient(135deg, #0f1522 0%, #1a202c 100%);
