@@ -355,9 +355,9 @@ class MainWindow(QtWidgets.QMainWindow):
         grid.addWidget(QtWidgets.QLabel("Observação"), 4, 2, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         grid.addWidget(self.observacao, 4, 3)
         # Linha 5: Chamado Granel | Paletizada
-        grid.addWidget(QtWidgets.QLabel("Chamado Granel"), 5, 0, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        grid.addWidget(QtWidgets.QLabel("Veículo Granel"), 5, 0, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         grid.addWidget(self.chamado_granel, 5, 1)
-        grid.addWidget(QtWidgets.QLabel("Paletizada"), 5, 2, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        grid.addWidget(QtWidgets.QLabel("Veículo Paletizada"), 5, 2, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         grid.addWidget(self.paletizada, 5, 3)
 
         top = QtWidgets.QHBoxLayout()
