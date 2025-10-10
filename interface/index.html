@@ -1,10 +1,15 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-style="padrao" data-mode="light">
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<title>Apresentação Diária - Recebimento Martins</title>
 	<link rel="stylesheet" href="style.css" />
+	<link rel="stylesheet" href="themas/oceano.css" />
+	<link rel="stylesheet" href="themas/esmeralda.css" />
+	<link rel="stylesheet" href="themas/solar.css" />
+	<link rel="stylesheet" href="themas/violeta.css" />
+	<link rel="stylesheet" href="themas/grafite.css" />
 	<!-- Icones Fontisto Brain Circuit -->
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontisto/fontisto@latest/css/fontisto/fontisto.min.css">
 	<!-- ApexCharts -->
@@ -13,18 +18,71 @@
 	<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ctext y='50%25' x='50%25' dominant-baseline='middle' text-anchor='middle' font-size='32'%3E%F0%9F%A7%A0%3C/text%3E%3C/svg%3E">
 	<style>
 		/* fallback mínimo caso style.css não carregue */
-		body{background:#0d1117;color:#e6eef5;font-family:Segoe UI,Roboto,Arial;margin:0}
+		html,body{background:#f4f6f9;color:#1d2330;font-family:Segoe UI,Roboto,Arial;margin:0}
 	</style>
 </head>
 <body>
 	<header class="top daily">
-	<h1 id="pageTitle"><i class="fi fi-ss-brain-circuit"></i> Apresentação diária — Recebimento CAD UDI</h1>
+	<h1 id="pageTitle">
+		<i class="fi fi-ss-brain-circuit"></i>
+		<span class="title-main">Apresentação diária</span>
+		<span class="title-divider">—</span>
+		<span class="title-sub">Recebimento CAD UDI</span>
+		<span class="title-extra" id="pageTitleExtra"></span>
+	</h1>
 		<div class="controls">
 			<label for="datePick">Selecione o dia</label>
 			<input id="datePick" type="date" />
 			<button id="loadDay">Carregar</button>
 			<button id="editObs" type="button">Editar Observação</button>
 			<button id="openTemporal" type="button">Grafico temporal</button>
+			<div class="theme-picker" id="themePicker">
+				<button type="button" id="themePickerButton" class="theme-trigger" aria-haspopup="true" aria-expanded="false">Tema Padrão (Light)</button>
+				<div class="theme-menu" id="themePickerMenu" role="menu">
+					<div class="theme-option" data-style="padrao" role="presentation">
+						<span>Tema Padrão</span>
+						<div class="theme-modes">
+							<button type="button" data-mode="light">Light</button>
+							<button type="button" data-mode="dark">Dark</button>
+						</div>
+					</div>
+					<div class="theme-option" data-style="oceano" role="presentation">
+						<span>Tema Oceano</span>
+						<div class="theme-modes">
+							<button type="button" data-mode="light">Light</button>
+							<button type="button" data-mode="dark">Dark</button>
+						</div>
+					</div>
+					<div class="theme-option" data-style="esmeralda" role="presentation">
+						<span>Tema Esmeralda</span>
+						<div class="theme-modes">
+							<button type="button" data-mode="light">Light</button>
+							<button type="button" data-mode="dark">Dark</button>
+						</div>
+					</div>
+					<div class="theme-option" data-style="solar" role="presentation">
+						<span>Tema Solar</span>
+						<div class="theme-modes">
+							<button type="button" data-mode="light">Light</button>
+							<button type="button" data-mode="dark">Dark</button>
+						</div>
+					</div>
+					<div class="theme-option" data-style="violeta" role="presentation">
+						<span>Tema Violeta</span>
+						<div class="theme-modes">
+							<button type="button" data-mode="light">Light</button>
+							<button type="button" data-mode="dark">Dark</button>
+						</div>
+					</div>
+					<div class="theme-option" data-style="grafite" role="presentation">
+						<span>Tema Grafite</span>
+						<div class="theme-modes">
+							<button type="button" data-mode="light">Light</button>
+							<button type="button" data-mode="dark">Dark</button>
+						</div>
+					</div>
+				</div>
+			</div>
 			<!-- Controles de período (somente modo temporal) -->
 			<span id="temporalControls" style="display:none; gap:8px; align-items:center;">
 				<label for="rangeStart">Entre</label>
@@ -118,46 +176,48 @@
 				<div class="progressWrap"><div class="progressFill" id="fichas_fill" style="width:0%"></div></div>
 			</div>
 
-			<div class="card card-progress-3">
-				<h3>Veículos Granel x Paletizado</h3>
-				<p class="muted">Comparativo diário dos chamados (valores absolutos)</p>
-				<div class="dualRow">
-					<span class="label">Veículo Granel</span>
-					<span class="numbers" id="dual_granel_val_a">0</span>
+			<div class="cards-split-row">
+				<div class="card card-progress-3">
+					<h3>Veículos Granel x Paletizado</h3>
+					<p class="muted">Comparativo diário dos chamados (valores absolutos)</p>
+					<div class="dualRow">
+						<span class="label">Veículo Granel</span>
+						<span class="numbers" id="dual_granel_val_a">0</span>
+					</div>
+					<div class="progressWrap"><div class="progressFill bar-a" id="dual_granel_fill_a" style="width:0%"></div></div>
+					<div class="dualRow">
+						<span class="label">Veículo Paletizado</span>
+						<span class="numbers" id="dual_granel_val_b">0</span>
+					</div>
+					<div class="progressWrap"><div class="progressFill bar-b" id="dual_granel_fill_b" style="width:0%"></div></div>
 				</div>
-				<div class="progressWrap"><div class="progressFill bar-a" id="dual_granel_fill_a" style="width:0%"></div></div>
-				<div class="dualRow">
-					<span class="label">Veículo Paletizado</span>
-					<span class="numbers" id="dual_granel_val_b">0</span>
-				</div>
-				<div class="progressWrap"><div class="progressFill bar-b" id="dual_granel_fill_b" style="width:0%"></div></div>
-			</div>
 
-			<div class="card card-progress-3 card-dual card-donut">
-				<h3>Distribuição Granel x Paletizado</h3>
-				<p class="muted">Percentual e totais acumulados do dia</p>
-				<div class="donutRow">
-					<div class="donut" id="donut_granel" aria-label="Donut Veículo Granel x Veículo Paletizado">
-						<div class="donutHole">
-							<div class="donutLabel"><span id="donut_granel_a">0</span>/<span id="donut_granel_b">0</span></div>
+				<div class="card card-progress-3 card-dual card-donut">
+					<h3>Distribuição Granel x Paletizado</h3>
+					<p class="muted">Percentual e totais acumulados do dia</p>
+					<div class="donutRow">
+						<div class="donut" id="donut_granel" aria-label="Donut Veículo Granel x Veículo Paletizado">
+							<div class="donutHole">
+								<div class="donutLabel"><span id="donut_granel_a">0</span>/<span id="donut_granel_b">0</span></div>
+							</div>
 						</div>
-					</div>
-					<div class="donutLegend">
-						<div><span class="dot a"></span>Granel: <span id="donut_granel_pct_a">0%</span></div>
-						<div><span class="dot b"></span>Paletizado: <span id="donut_granel_pct_b">0%</span></div>
-					</div>
-					<div class="chipRow">
-						<div class="chip">
-							<span>Total Chamados</span>
-							<strong id="chip_granel_total">0</strong>
+						<div class="donutLegend">
+							<div><span class="dot a"></span>Granel: <span id="donut_granel_pct_a">0%</span></div>
+							<div><span class="dot b"></span>Paletizado: <span id="donut_granel_pct_b">0%</span></div>
 						</div>
-						<div class="chip">
-							<span>Diferença Absoluta</span>
-							<strong id="chip_granel_diff">0</strong>
-						</div>
-						<div class="chip">
-							<span>Liderança</span>
-							<strong id="chip_granel_leader">—</strong>
+						<div class="chipRow">
+							<div class="chip">
+								<span>Total paletes</span>
+								<strong id="chip_granel_total">0</strong>
+							</div>
+							<div class="chip">
+								<span>Diferença Absoluta</span>
+								<strong id="chip_granel_diff">0</strong>
+							</div>
+							<div class="chip">
+								<span>Liderança</span>
+								<strong id="chip_granel_leader">—</strong>
+							</div>
 						</div>
 					</div>
 				</div>

@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Iterable, List, Tuple, Optional
 
 from PySide6 import QtCore, QtGui, QtWidgets
-from .theme import DARK_QSS
+from .theme import APP_QSS
 
 
 
@@ -16,8 +16,12 @@ class VeiculosDialog(QtWidgets.QDialog):
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle(title)
-        self.resize(520, 420)
-        self.setStyleSheet(DARK_QSS)
+        self.resize(600, 420)
+        self.setMinimumWidth(600)
+        self.setMaximumWidth(600)
+        self.setMinimumHeight(420)
+        self.setMaximumHeight(420)
+        self.setStyleSheet(APP_QSS)
         self._read_only = read_only
         # Normaliza initial para lista de (veiculo, quantidade, porcentagem)
         norm_rows: List[Tuple[str, int, int]] = []
@@ -36,10 +40,25 @@ class VeiculosDialog(QtWidgets.QDialog):
         self._edit_row: Optional[int] = None
 
         layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(18, 18, 18, 18)
+        layout.setSpacing(14)
+
+        header = QtWidgets.QLabel(title)
+        header.setObjectName("metricTitle")
+        header.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        layout.addWidget(header)
 
         # Editor de entrada (oculto em read-only)
+        editor_card = QtWidgets.QFrame()
+        editor_card.setObjectName("cardSurface")
+        editor_card.setProperty("interactive", True)
+        editor_card_lay = QtWidgets.QVBoxLayout(editor_card)
+        editor_card_lay.setContentsMargins(18, 18, 18, 12)
+        editor_card_lay.setSpacing(10)
+
         self.editor = QtWidgets.QWidget()
         e_lay = QtWidgets.QHBoxLayout(self.editor)
+        e_lay.setSpacing(10)
         self.veh_input = QtWidgets.QLineEdit(); self.veh_input.setPlaceholderText("Veículo")
         self.qty_input = QtWidgets.QSpinBox(); self.qty_input.setRange(0, 100000); self.qty_input.setPrefix("Qtd ")
         self.pct_input = QtWidgets.QSpinBox(); self.pct_input.setRange(0, 100); self.pct_input.setSuffix(" %")
@@ -47,38 +66,78 @@ class VeiculosDialog(QtWidgets.QDialog):
         self.btn_add.clicked.connect(self._on_add)
         # Botão cancelar edição (invisível por padrão)
         self.btn_cancel_edit = QtWidgets.QPushButton("Cancelar")
+        self.btn_cancel_edit.setProperty("variant", "ghost")
         self.btn_cancel_edit.setVisible(False)
         self.btn_cancel_edit.clicked.connect(self._cancel_edit)
+        try:
+            style = self.btn_cancel_edit.style()
+            style.unpolish(self.btn_cancel_edit)
+            style.polish(self.btn_cancel_edit)
+        except Exception:
+            pass
         e_lay.addWidget(self.veh_input, 1)
         e_lay.addWidget(self.qty_input)
         e_lay.addWidget(self.pct_input)
         e_lay.addWidget(self.btn_add)
         e_lay.addWidget(self.btn_cancel_edit)
-        layout.addWidget(self.editor)
+        editor_card_lay.addWidget(self.editor)
+        layout.addWidget(editor_card)
+        self._apply_card_shadow(editor_card, blur=24, y_offset=8, alpha=26)
 
         # Tabela
+        table_card = QtWidgets.QFrame()
+        table_card.setObjectName("cardSurface")
+        table_card_lay = QtWidgets.QVBoxLayout(table_card)
+        table_card_lay.setContentsMargins(18, 18, 18, 18)
+        table_card_lay.setSpacing(12)
+
         self.table = QtWidgets.QTableWidget(0, 4)
-        self.table.setHorizontalHeaderLabels(["Veículo", "Qtd", "%", "Ações"])
+        self.table.setHorizontalHeaderLabels(["Veículo", "Qtd", "%", "Editação e Exclusão"])
         self.table.horizontalHeader().setStretchLastSection(True)
+        try:
+            self.table.horizontalHeader().setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeToContents)
+        except Exception:
+            pass
         self.table.setAlternatingRowColors(True)
         self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        layout.addWidget(self.table, 1)
+        table_card_lay.addWidget(self.table, 1)
+        layout.addWidget(table_card, 1)
+        self._apply_card_shadow(table_card, blur=26, y_offset=10, alpha=26)
 
         # Botões padrão
         btns = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
         btns.button(QtWidgets.QDialogButtonBox.Ok).setMinimumWidth(96)
-        btns.button(QtWidgets.QDialogButtonBox.Cancel).setMinimumWidth(96)
+        cancel_btn = btns.button(QtWidgets.QDialogButtonBox.Cancel)
+        if cancel_btn is not None:
+            cancel_btn.setMinimumWidth(96)
+            cancel_btn.setProperty("variant", "ghost")
+            try:
+                style = cancel_btn.style()
+                style.unpolish(cancel_btn)
+                style.polish(cancel_btn)
+            except Exception:
+                pass
         btns.accepted.connect(self.accept)
         btns.rejected.connect(self.reject)
         layout.addWidget(btns)
 
         if self._read_only:
             self.editor.hide()
-            self.table.setColumnHidden(3, True)
             btns.button(QtWidgets.QDialogButtonBox.Ok).setText("Fechar")
             btns.button(QtWidgets.QDialogButtonBox.Cancel).hide()
 
         self._refresh_table()
+
+    def _apply_card_shadow(self, widget: QtWidgets.QWidget, *, blur: int = 24, y_offset: int = 8, alpha: int = 28) -> None:
+        try:
+            shadow = QtWidgets.QGraphicsDropShadowEffect()
+            shadow.setBlurRadius(blur)
+            shadow.setXOffset(0)
+            shadow.setYOffset(y_offset)
+            shadow.setColor(QtGui.QColor(15, 23, 42, alpha))
+            widget.setGraphicsEffect(shadow)
+        except Exception:
+            pass
 
     # Dados expostos ao chamar .exec()
     def get_rows(self) -> List[Tuple[str, int, int]]:
@@ -178,6 +237,13 @@ class VeiculosDialog(QtWidgets.QDialog):
             if not self._read_only:
                 btn_edit = QtWidgets.QPushButton("Editar")
                 btn_edit.setToolTip("Editar este veículo")
+                btn_edit.setProperty("variant", "ghost")
+                try:
+                    style = btn_edit.style()
+                    style.unpolish(btn_edit)
+                    style.polish(btn_edit)
+                except Exception:
+                    pass
                 btn_edit.clicked.connect(lambda _=False, r=i: self._on_edit(r))
                 btn_del = QtWidgets.QPushButton("Remover")
                 btn_del.setObjectName("danger")
@@ -185,5 +251,11 @@ class VeiculosDialog(QtWidgets.QDialog):
                 btn_del.clicked.connect(lambda _=False, r=i: self._on_remove(r))
                 hl.addWidget(btn_edit)
                 hl.addWidget(btn_del)
+            else:
+                badge = QtWidgets.QLabel("Somente visualização")
+                badge.setObjectName("tableHint")
+                badge.setAlignment(QtCore.Qt.AlignCenter)
+                badge.setMinimumWidth(120)
+                hl.addWidget(badge)
             actions.setLayout(hl)
             self.table.setCellWidget(i, 3, actions)

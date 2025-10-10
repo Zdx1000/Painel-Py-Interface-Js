@@ -1,4 +1,14 @@
 const API_BASE = "http://127.0.0.1:8765"; // iniciado pelo app desktop
+const THEME_STORAGE_KEY = "dashboardThemeStyle";
+const THEME_MODE_STORAGE_KEY = "dashboardThemeMode";
+const THEME_LABELS = {
+	padrao: "Tema Padrão",
+	oceano: "Tema Oceano",
+	esmeralda: "Tema Esmeralda",
+	solar: "Tema Solar",
+	violeta: "Tema Violeta",
+	grafite: "Tema Grafite"
+};
 let MODE_TEMPORAL = false;
 
 async function fetchDia(dateStr){
@@ -14,6 +24,92 @@ async function fetchPeriodo(startStr, endStr){
 	const res = await fetch(url);
 	if(!res.ok) throw new Error("Erro ao buscar período");
 	return res.json();
+}
+
+function setPageTitle(mainText, subText, extraText = ""){
+	const titleEl = document.getElementById("pageTitle");
+	if(!titleEl) return;
+	const mainEl = titleEl.querySelector(".title-main");
+	if(mainEl && typeof mainText === "string"){
+		mainEl.textContent = mainText;
+	}
+	const subEl = titleEl.querySelector(".title-sub");
+	if(subEl && typeof subText === "string"){
+		subEl.textContent = subText;
+	}
+	const dividerEl = titleEl.querySelector(".title-divider");
+	if(dividerEl){
+		dividerEl.style.display = subText ? "" : "none";
+	}
+	const extraEl = document.getElementById("pageTitleExtra");
+	if(extraEl){
+		if(extraText){
+			extraEl.textContent = extraText;
+			extraEl.style.display = "inline-flex";
+		}else{
+			extraEl.textContent = "";
+			extraEl.style.display = "none";
+		}
+	}
+}
+
+function safeSetStorage(key, value){
+	try{
+		localStorage.setItem(key, value);
+	}catch{}
+}
+
+function safeGetStorage(key){
+	try{
+		return localStorage.getItem(key);
+	}catch{
+		return null;
+	}
+}
+
+function applyThemeStyle(styleKey){
+	const root = document.documentElement;
+	if(!root) return;
+	const normalized = styleKey || "padrao";
+	root.setAttribute("data-style", normalized);
+	safeSetStorage(THEME_STORAGE_KEY, normalized);
+	updateThemeUI();
+}
+
+function applyThemeMode(modeKey){
+	const root = document.documentElement;
+	if(!root) return;
+	const normalized = modeKey === "dark" ? "dark" : "light";
+	root.setAttribute("data-mode", normalized);
+	safeSetStorage(THEME_MODE_STORAGE_KEY, normalized);
+	updateThemeUI();
+}
+
+function updateThemeUI(){
+	const root = document.documentElement;
+	if(!root) return;
+	const currentStyle = root.getAttribute("data-style") || "padrao";
+	const currentMode = root.getAttribute("data-mode") === "dark" ? "dark" : "light";
+	const trigger = document.getElementById("themePickerButton");
+	if(trigger){
+		const label = THEME_LABELS[currentStyle] || THEME_LABELS.padrao;
+		const modeLabel = currentMode === "dark" ? "Dark" : "Light";
+		trigger.textContent = `${label} (${modeLabel})`;
+		trigger.setAttribute("aria-label", `Selecionar tema. Atual: ${label} modo ${currentMode === "dark" ? "escuro" : "claro"}`);
+	}
+	const menu = document.getElementById("themePickerMenu");
+	if(menu){
+		menu.querySelectorAll(".theme-option").forEach(option => {
+			const style = option.dataset.style;
+			const isActiveStyle = style === currentStyle;
+			option.classList.toggle("active", isActiveStyle);
+			option.querySelectorAll("button[data-mode]").forEach(btn => {
+				const mode = btn.dataset.mode === "dark" ? "dark" : "light";
+				const isActive = isActiveStyle && mode === currentMode;
+				btn.classList.toggle("active", isActive);
+			});
+		});
+	}
 }
 
 function toYmd(d){
@@ -116,10 +212,12 @@ async function carregarDia(){
 		return;
 	}
 	// Atualiza título com a data selecionada (DD/MM/AAAA)
-	const [y,m,d] = val.split("-");
-	const titleEl = document.getElementById("pageTitle");
-	if(titleEl){
-		titleEl.textContent = `Apresentação diária — Recebimento CAD UDI (${d}/${m}/${y})`;
+	const parts = val.split("-");
+	if(parts.length === 3){
+		const [y, m, d] = parts;
+		setPageTitle("Apresentação diária", "Recebimento CAD UDI", `(${d}/${m}/${y})`);
+	}else{
+		setPageTitle("Apresentação diária", "Recebimento CAD UDI");
 	}
 	try{
 		const data = await fetchDia(val);
@@ -374,6 +472,102 @@ document.addEventListener("DOMContentLoaded", () => {
 	const today = `${yyyy}-${mm}-${dd}`;
 	const input = document.getElementById("datePick");
 	input.value = today;
+	setPageTitle("Apresentação diária", "Recebimento CAD UDI", `(${dd}/${mm}/${yyyy})`);
+
+	// Inicializa tema salvo
+	const root = document.documentElement;
+	let initialMode = root.getAttribute("data-mode") || "light";
+	let initialStyle = root.getAttribute("data-style") || "padrao";
+	const storedMode = safeGetStorage(THEME_MODE_STORAGE_KEY);
+	if(storedMode){
+		initialMode = storedMode;
+	}
+	applyThemeMode(initialMode);
+	const storedStyle = safeGetStorage(THEME_STORAGE_KEY);
+	if(storedStyle){
+		initialStyle = storedStyle;
+	}
+	applyThemeStyle(initialStyle);
+	updateThemeUI();
+	const themePicker = document.getElementById("themePicker");
+	const themeButton = document.getElementById("themePickerButton");
+	const themeMenu = document.getElementById("themePickerMenu");
+	if(themePicker && themeButton && themeMenu){
+		let hoverTimer = null;
+		const closeMenu = () => {
+			themePicker.classList.remove("open");
+			themeButton.setAttribute("aria-expanded", "false");
+		};
+		const openMenu = () => {
+			themePicker.classList.add("open");
+			themeButton.setAttribute("aria-expanded", "true");
+		};
+		themeButton.addEventListener("click", () => {
+			if(themePicker.classList.contains("open")){
+				closeMenu();
+			}else{
+				openMenu();
+			}
+		});
+		themePicker.addEventListener("mouseenter", () => {
+			if(hoverTimer){
+				clearTimeout(hoverTimer);
+				hoverTimer = null;
+			}
+			openMenu();
+		});
+		themePicker.addEventListener("mouseleave", () => {
+			hoverTimer = setTimeout(() => {
+				closeMenu();
+				hoverTimer = null;
+			}, 160);
+		});
+		themeButton.addEventListener("keydown", evt => {
+			if(evt.key === "ArrowDown" || evt.key === "Enter" || evt.key === " "){
+				evt.preventDefault();
+				openMenu();
+				const firstMode = themeMenu.querySelector("button[data-mode]");
+				if(firstMode){
+					firstMode.focus();
+				}
+			}
+		});
+		themeMenu.addEventListener("click", evt => {
+			const modeBtn = evt.target.closest("button[data-mode]");
+			if(!modeBtn) return;
+			const option = modeBtn.closest(".theme-option");
+			if(!option) return;
+			const style = option.dataset.style || "padrao";
+			const mode = modeBtn.dataset.mode === "dark" ? "dark" : "light";
+			applyThemeStyle(style);
+			applyThemeMode(mode);
+			closeMenu();
+			themeButton.focus();
+		});
+		themeMenu.addEventListener("keydown", evt => {
+			if(evt.key === "Escape"){
+				evt.preventDefault();
+				closeMenu();
+				themeButton.focus();
+			}
+		});
+		document.addEventListener("click", evt => {
+			if(!themePicker.contains(evt.target)){
+				closeMenu();
+			}
+		});
+	}
+
+	const chartContainers = [
+		"temporal_chart",
+		"temporal_total",
+		"temporal_chart_c3",
+		"temporal_total_c3"
+	];
+	chartContainers
+		.map(id => document.getElementById(id))
+		.filter(Boolean)
+		.forEach(el => el.classList.add("chart-surface"));
 	document.getElementById("loadDay").addEventListener("click", carregarDia);
 
 	// Botão: Gráfico temporal (placeholder)
@@ -383,7 +577,6 @@ document.addEventListener("DOMContentLoaded", () => {
 			const dailySectionCards = document.getElementById('cards');
 			const dailySectionLists = document.querySelector('section.lists');
 			const temporalSection = document.getElementById('temporal_section');
-			const titleEl = document.getElementById('pageTitle');
 			const controls = document.getElementById('temporalControls');
 			const dateInput = document.getElementById('datePick');
 			const dateLabel = document.querySelector('label[for="datePick"]');
@@ -395,7 +588,7 @@ document.addEventListener("DOMContentLoaded", () => {
 				if(dailySectionLists) dailySectionLists.style.display = 'none';
 				if(temporalSection) temporalSection.style.display = 'grid';
 				if(controls) controls.style.display = 'inline-flex';
-				if(titleEl) titleEl.textContent = 'Apresentação Gráfica — Recebimento CAD UDI';
+				setPageTitle('Apresentação Gráfica', 'Recebimento CAD UDI', 'Modo temporal');
 				btnTemporal.textContent = 'Apresentação diária';
 				// Oculta controles de seleção diária (label e botão Carregar; e também o input para limpar o head)
 				if(dateLabel) dateLabel.style.display = 'none';

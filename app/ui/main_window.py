@@ -15,7 +15,7 @@ from ..db.repository import (
     VeiculoCarregamentoC3Repository,
 )
 from pydantic import BaseModel, field_validator, ValidationError
-from .theme import DARK_QSS
+from .theme import APP_QSS
 from ..api.server import ApiServer
 from sqlalchemy import select
 from ..db.models import Metrica, VeiculoPendente, VeiculoDescargaC3, VeiculoAntecipado
@@ -38,7 +38,7 @@ class MetricaTableModel(QtCore.QAbstractTableModel):
         "Paletes Pendentes",
         "Fichas antecipadas",
         "Criado em",
-        "Ações",
+        "Editação e Exclusão",
     ]
 
     def __init__(self, rows: list[tuple]) -> None:
@@ -56,6 +56,15 @@ class MetricaTableModel(QtCore.QAbstractTableModel):
             return None
         if role in (QtCore.Qt.DisplayRole, QtCore.Qt.EditRole):
             return self._rows[index.row()][index.column()]
+        if role == QtCore.Qt.ForegroundRole:
+            try:
+                value = self._rows[index.row()][index.column()]
+            except Exception:
+                value = None
+            if index.column() in (9, 10) and isinstance(value, (int, float)) and value > 0:
+                return QtGui.QColor(190, 18, 60)
+            if index.column() in (4,) and isinstance(value, (int, float)) and value >= 0:
+                return QtGui.QColor(16, 94, 67)
         return None
 
     def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role: int = QtCore.Qt.DisplayRole):  # type: ignore[override]
@@ -144,6 +153,15 @@ class InteractiveHighlightDelegate(QtWidgets.QStyledItemDelegate):
         painter.setBrush(tint)
         painter.setPen(QtGui.QPen(QtGui.QColor(base.red(), base.green(), base.blue(), int(alpha * 0.9)), 1))
         painter.drawRoundedRect(r, 6, 6)
+        try:
+            icon = self.view.style().standardIcon(QtWidgets.QStyle.SP_ArrowForward)
+            pix = icon.pixmap(12, 12)
+            if not pix.isNull():
+                x = r.right() - pix.width() - 8
+                y = r.center().y() - pix.height() // 2
+                painter.drawPixmap(QtCore.QPoint(x, y), pix)
+        except Exception:
+            pass
         painter.restore()
 
 
@@ -202,8 +220,17 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.setWindowIcon(QtGui.QIcon(str(icon_path)))
         except Exception:
             pass
-        self.resize(1200, 720)
-        self.setStyleSheet(DARK_QSS)
+        self.resize(900, 680)
+        self.setMinimumWidth(900)
+        self.setMaximumWidth(900)
+        self.setMinimumHeight(680)
+        self.setMaximumHeight(680)
+        self.setStyleSheet(APP_QSS)
+        self._overview_labels = {}
+        self._overview_config = {}
+        self._overview_timestamp = None
+        self._overview_cards = []
+        self._overview_grid = None
 
         # Campos de métricas
         self.paletes_agendados = QtWidgets.QSpinBox(); self.paletes_agendados.setRange(0, 10_000)
@@ -252,10 +279,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # Efeito de sombra sutil
         try:
             shadow = QtWidgets.QGraphicsDropShadowEffect()
-            shadow.setBlurRadius(18)
+            shadow.setBlurRadius(22)
             shadow.setXOffset(0)
-            shadow.setYOffset(2)
-            shadow.setColor(QtGui.QColor(0, 0, 0, 140))
+            shadow.setYOffset(4)
+            shadow.setColor(QtGui.QColor(15, 23, 42, 60))
             self.observacao.setGraphicsEffect(shadow)
         except Exception:
             pass
@@ -294,13 +321,19 @@ class MainWindow(QtWidgets.QMainWindow):
         ):
             w.setMinimumHeight(34)
         self.date_ref.setMinimumHeight(34)
+        self.lbl_data_ref = QtWidgets.QLabel("Data referência")
+        self.lbl_data_ref.setObjectName("dataRefLabel")
+        self.lbl_data_ref.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        self.lbl_data_ref.setMinimumHeight(34)
         # Altura mínima para o campo de observação já é controlada pela classe
 
-        form = QtWidgets.QWidget()
+        form = QtWidgets.QFrame()
+        form.setObjectName("cardSurface")
         grid = QtWidgets.QGridLayout(form)
-        grid.setHorizontalSpacing(16)
-        grid.setVerticalSpacing(12)
-        grid.setContentsMargins(16, 16, 16, 16)
+        grid.setHorizontalSpacing(18)
+        grid.setVerticalSpacing(14)
+        grid.setContentsMargins(24, 20, 24, 16)
+        self._apply_card_shadow(form, blur=30, y_offset=12, alpha=28)
         # Coluna 3 (onde fica Observação) ocupa mais espaço
         grid.setColumnStretch(3, 1)
         # Linha 0: Paletes na Agenda | Paletes Produzidos
@@ -360,44 +393,9 @@ class MainWindow(QtWidgets.QMainWindow):
         grid.addWidget(QtWidgets.QLabel("Veículo Paletizada"), 5, 2, alignment=QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         grid.addWidget(self.paletizada, 5, 3)
 
-        top = QtWidgets.QHBoxLayout()
-        top.setSpacing(16)
-        top.addWidget(form, 1)
-        buttons = QtWidgets.QVBoxLayout()
-        buttons.setSpacing(10)
-        buttons.addWidget(self.btn_add)
-        buttons.addWidget(self.btn_del)
-        buttons.addWidget(self.btn_export)
-        # Label estilizado + seletor de data (melhora visual simples)
-        self.lbl_data_ref = QtWidgets.QLabel("Data referência")
-        self.lbl_data_ref.setObjectName("dataRefLabel")
-        self.lbl_data_ref.setAlignment(QtCore.Qt.AlignCenter)
-        # Estilo inline simples para destacar discretamente o título do campo de data
-        self.lbl_data_ref.setStyleSheet(
-            """
-            #dataRefLabel {
-                padding:4px 10px;
-                background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 #0f1522, stop:1 #1a2b45);
-                border:1px solid rgba(29,78,216,0.55);
-                border-radius:6px;
-                color:#93c5fd;
-                font-weight:600;
-                font-size:13px;
-                letter-spacing:0.5px;
-            }
-            #dataRefLabel:hover { border-color: rgba(96,165,250,0.8); }
-            """
-        )
-        buttons.addWidget(self.lbl_data_ref)
-        buttons.addWidget(self.date_ref)
-        buttons.addStretch(1)
-        bwrap = QtWidgets.QWidget(); bwrap.setLayout(buttons)
-        top.addWidget(bwrap)
+        self.date_ref.setMaximumWidth(150)
 
-        top_w = QtWidgets.QWidget()
-        top_w.setLayout(top)
-
-    # Table
+        # Table
         self.table = QtWidgets.QTableView()
         self.table.setSortingEnabled(True)
         self.table.setAlternatingRowColors(True)
@@ -435,10 +433,59 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lbl_page = QtWidgets.QLabel("Página 1 de 1")
         self.btn_next = QtWidgets.QPushButton("Próxima")
         self.btn_next.clicked.connect(self.on_next_page)
+        self._set_button_variant(self.btn_prev, "ghost")
+        self._set_button_variant(self.btn_next, "ghost")
         pager.addWidget(self.btn_prev)
         pager.addWidget(self.lbl_page)
         pager.addWidget(self.btn_next)
         pager_w = QtWidgets.QWidget(); pager_w.setLayout(pager)
+
+        # Barra de comandos
+        self.toggle_view_btn = QtWidgets.QPushButton("Tabela")
+        self.toggle_view_btn.setMinimumHeight(34)
+        self.toggle_view_btn.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+        self.toggle_view_btn.setToolTip("Ver registros em tabela")
+        self.toggle_view_btn.clicked.connect(self.on_toggle_view)
+        self._set_button_variant(self.toggle_view_btn, "ghost")
+
+        command_bar = QtWidgets.QFrame()
+        command_bar.setObjectName("cardSurface")
+        command_bar.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        cmd_layout = QtWidgets.QHBoxLayout(command_bar)
+        cmd_layout.setContentsMargins(24, 12, 24, 12)
+        cmd_layout.setSpacing(18)
+
+        actions_wrap = QtWidgets.QWidget()
+        actions_layout = QtWidgets.QHBoxLayout(actions_wrap)
+        actions_layout.setContentsMargins(0, 0, 0, 0)
+        actions_layout.setSpacing(12)
+        for btn in (self.btn_add, self.btn_del, self.btn_export):
+            btn.setMinimumWidth(70)
+            actions_layout.addWidget(btn)
+        cmd_layout.addWidget(actions_wrap, 0, QtCore.Qt.AlignLeft)
+
+        divider = QtWidgets.QFrame()
+        divider.setFrameShape(QtWidgets.QFrame.VLine)
+        divider.setFrameShadow(QtWidgets.QFrame.Plain)
+        divider.setStyleSheet("color: rgba(15, 23, 42, 40);")
+        divider.setFixedHeight(34)
+        cmd_layout.addWidget(divider)
+
+        date_widget = QtWidgets.QWidget()
+        date_layout = QtWidgets.QHBoxLayout(date_widget)
+        date_layout.setContentsMargins(0, 0, 0, 0)
+        date_layout.setSpacing(8)
+        date_layout.addWidget(self.lbl_data_ref)
+        self.date_ref.setMinimumWidth(160)
+        self.date_ref.setMaximumWidth(200)
+        date_layout.addWidget(self.date_ref)
+        cmd_layout.addWidget(date_widget, 0, QtCore.Qt.AlignVCenter)
+
+        cmd_layout.addStretch(1)
+        self.toggle_view_btn.setMinimumWidth(140)
+        cmd_layout.addWidget(self.toggle_view_btn, 0, QtCore.Qt.AlignRight)
+        self._apply_card_shadow(command_bar, blur=20, y_offset=6, alpha=24)
+        self._command_bar = command_bar
 
         # Layout
         central = QtWidgets.QWidget()
@@ -472,10 +519,29 @@ class MainWindow(QtWidgets.QMainWindow):
         header_layout.addWidget(btn_grafico, 0, QtCore.Qt.AlignRight)
         lay.addWidget(header_container, alignment=QtCore.Qt.AlignHCenter)
         self._header_container = header_container
-        lay.addWidget(top_w)
-        lay.addWidget(self.table, 1)
-        lay.addWidget(pager_w)
+        overview_panel = self._build_overview_panel()
+        lay.addWidget(overview_panel)
+        lay.addWidget(self._command_bar)
+
+        alimentacao_page = QtWidgets.QWidget()
+        alimentacao_layout = QtWidgets.QVBoxLayout(alimentacao_page)
+        alimentacao_layout.setContentsMargins(0, 0, 0, 0)
+        alimentacao_layout.setSpacing(16)
+        alimentacao_layout.addWidget(form)
+
+        tabela_page = QtWidgets.QWidget()
+        tabela_layout = QtWidgets.QVBoxLayout(tabela_page)
+        tabela_layout.setContentsMargins(0, 0, 0, 0)
+        tabela_layout.setSpacing(12)
+        tabela_layout.addWidget(self.table, 1)
+        tabela_layout.addWidget(pager_w)
+
+        self._view_stack = QtWidgets.QStackedWidget()
+        self._view_stack.addWidget(alimentacao_page)
+        self._view_stack.addWidget(tabela_page)
+        lay.addWidget(self._view_stack, 1)
         self.setCentralWidget(central)
+        self._relayout_overview_cards()
 
         # Inicia API local para uso pela interface web
         self._api = ApiServer()
@@ -510,6 +576,127 @@ class MainWindow(QtWidgets.QMainWindow):
         self._apply_fast_column_layout()
         self.refresh()
 
+    def _build_overview_panel(self) -> QtWidgets.QWidget:
+        panel = QtWidgets.QWidget()
+        panel.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        layout = QtWidgets.QVBoxLayout(panel)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+        grid = QtWidgets.QGridLayout()
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setHorizontalSpacing(16)
+        grid.setVerticalSpacing(12)
+        layout.addLayout(grid)
+        self._overview_grid = grid
+        self._overview_cards.clear()
+        self._overview_labels.clear()
+        self._overview_config.clear()
+        metrics = [
+            ("Paletes Produzidos", "paletes_produzidos", 2),
+            ("Fichas finalizadas", "veiculos_finalizados", 4),
+            ("Veículos pendentes", "veiculos_pendentes", 9),
+            ("Paletes pendentes", "paletes_pendentes", 10),
+        ]
+        for title, key, idx in metrics:
+            card, value_label = self._create_metric_card(title)
+            self._overview_cards.append(card)
+            self._overview_labels[key] = value_label
+            self._overview_config[key] = idx
+        self._relayout_overview_cards()
+        self._overview_timestamp = QtWidgets.QLabel("Última atualização: —")
+        self._overview_timestamp.setObjectName("metricTimestamp")
+        layout.addWidget(self._overview_timestamp, 0, QtCore.Qt.AlignRight)
+        return panel
+
+    def _create_metric_card(self, title: str) -> tuple[QtWidgets.QFrame, QtWidgets.QLabel]:
+        card = QtWidgets.QFrame()
+        card.setObjectName("cardSurface")
+        card.setMinimumWidth(160)
+        card_layout = QtWidgets.QVBoxLayout(card)
+        card_layout.setContentsMargins(18, 18, 18, 18)
+        card_layout.setSpacing(6)
+        title_label = QtWidgets.QLabel(title)
+        title_label.setObjectName("metricTitle")
+        value_label = QtWidgets.QLabel("—")
+        value_label.setObjectName("metricValue")
+        value_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        card_layout.addWidget(title_label)
+        card_layout.addWidget(value_label)
+        card_layout.addStretch(1)
+        self._apply_card_shadow(card, blur=26, y_offset=8, alpha=28)
+        return card, value_label
+
+    def _apply_card_shadow(self, widget: QtWidgets.QWidget, *, blur: int = 24, y_offset: int = 8, alpha: int = 32) -> None:
+        try:
+            shadow = QtWidgets.QGraphicsDropShadowEffect()
+            shadow.setBlurRadius(blur)
+            shadow.setXOffset(0)
+            shadow.setYOffset(y_offset)
+            shadow.setColor(QtGui.QColor(15, 23, 42, alpha))
+            widget.setGraphicsEffect(shadow)
+        except Exception:
+            pass
+
+    def _set_button_variant(self, button: QtWidgets.QAbstractButton | None, variant: str) -> None:
+        if button is None:
+            return
+        button.setProperty("variant", variant)
+        try:
+            style = button.style()
+            style.unpolish(button)
+            style.polish(button)
+        except Exception:
+            pass
+
+    def _fmt_metric(self, value: int | None) -> str:
+        if value is None:
+            return "—"
+        try:
+            return f"{int(value):,}".replace(",", ".")
+        except Exception:
+            return str(value)
+
+    def _update_overview_from_rows(self, rows: list[tuple]) -> None:
+        if not self._overview_labels:
+            return
+        data = {key: None for key in self._overview_config.keys()}
+        timestamp = "—"
+        if rows:
+            latest = rows[0]
+            for key, idx in self._overview_config.items():
+                try:
+                    data[key] = latest[idx]
+                except Exception:
+                    data[key] = None
+            if len(latest) > 12:
+                raw = latest[12]
+                if isinstance(raw, str) and raw:
+                    timestamp = raw
+        for key, label in self._overview_labels.items():
+            label.setText(self._fmt_metric(data.get(key)))
+        if self._overview_timestamp is not None:
+            self._overview_timestamp.setText(f"Última atualização: {timestamp}")
+
+    def _relayout_overview_cards(self, available_width: int | None = None) -> None:
+        if not self._overview_grid or not self._overview_cards:
+            return
+        grid = self._overview_grid
+        while grid.count():
+            item = grid.takeAt(0)
+            if item.widget():
+                item.widget().setParent(grid.parentWidget())
+        total_cards = len(self._overview_cards)
+        if available_width is None:
+            available_width = self.centralWidget().width() if self.centralWidget() else self.width()
+        min_card = 220
+        columns = max(1, min(total_cards, max(1, available_width // min_card)))
+        for index, card in enumerate(self._overview_cards):
+            row = index // columns
+            col = index % columns
+            grid.addWidget(card, row, col)
+        for col in range(columns):
+            grid.setColumnStretch(col, 1)
+
     def open_index_html(self) -> None:
         from pathlib import Path
         try:
@@ -540,6 +727,7 @@ class MainWindow(QtWidgets.QMainWindow):
             desired = int(max(200, cw * 0.95))
             if hasattr(self, "_header_container") and self._header_container:
                 self._header_container.setFixedWidth(desired)
+            self._relayout_overview_cards(cw)
         except Exception:
             pass
         super().resizeEvent(event)
@@ -590,6 +778,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lbl_page.setText(f"Página {self._current_page} de {total_pages}")
         self.btn_prev.setEnabled(self._current_page > 1)
         self.btn_next.setEnabled(self._current_page < total_pages)
+        self._update_overview_from_rows(rows)
 
     def _apply_fast_column_layout(self) -> None:
         if getattr(self, "_columns_sized", False):
@@ -635,6 +824,22 @@ class MainWindow(QtWidgets.QMainWindow):
         # O refresh recalcula total_pages; aqui apenas incrementa e valida lá
         self._current_page += 1
         self.refresh()
+
+    def on_toggle_view(self) -> None:
+        if not hasattr(self, "_view_stack") or self._view_stack is None:
+            return
+        current = self._view_stack.currentIndex()
+        if current == 0:
+            self._view_stack.setCurrentIndex(1)
+            if hasattr(self, "toggle_view_btn") and self.toggle_view_btn:
+                self.toggle_view_btn.setText("Alimentação")
+                self.toggle_view_btn.setToolTip("Voltar para o painel de alimentação")
+            self.refresh()
+        else:
+            self._view_stack.setCurrentIndex(0)
+            if hasattr(self, "toggle_view_btn") and self.toggle_view_btn:
+                self.toggle_view_btn.setText("Tabela")
+                self.toggle_view_btn.setToolTip("Ver registros em tabela")
 
     def on_add(self) -> None:
         class Payload(BaseModel):
