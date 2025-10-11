@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title>Apresentação Diária - Recebimento Martins</title>
+	<title>Painel Recebimento Martins</title>
 	<link rel="stylesheet" href="style.css" />
 	<link rel="stylesheet" href="themas/oceano.css" />
 	<link rel="stylesheet" href="themas/esmeralda.css" />
@@ -23,62 +23,61 @@
 </head>
 <body>
 	<header class="top daily">
-	<h1 id="pageTitle">
-		<i class="fi fi-ss-brain-circuit"></i>
-		<span class="title-main">Apresentação diária</span>
+	<h1 id="pageTitle" data-icon="dashboardBadge" data-icon-size="xl" data-icon-tone="primary">
+		<span class="title-main">Recebimento CAD UDI</span>
 		<span class="title-divider">—</span>
-		<span class="title-sub">Recebimento CAD UDI</span>
+		<span class="title-sub"></span>
 		<span class="title-extra" id="pageTitleExtra"></span>
 	</h1>
 		<div class="controls">
 			<label for="datePick">Selecione o dia</label>
 			<input id="datePick" type="date" />
-			<button id="loadDay">Carregar</button>
-			<button id="editObs" type="button">Editar Observação</button>
-			<button id="openTemporal" type="button">Grafico temporal</button>
+			<button id="loadDay" data-icon="calendarBadge" data-icon-size="sm" data-icon-tone="info">Carregar</button>
+			<button id="editObs" type="button" data-icon="editBadge" data-icon-size="sm" data-icon-tone="primary">Editar Observação</button>
+			<button id="openTemporal" type="button" data-icon="timelineBadge" data-icon-size="sm" data-icon-tone="info">Gráfico temporal</button>
 			<div class="theme-picker" id="themePicker">
-				<button type="button" id="themePickerButton" class="theme-trigger" aria-haspopup="true" aria-expanded="false">Tema Padrão (Light)</button>
+				<button type="button" id="themePickerButton" class="theme-trigger" aria-haspopup="true" aria-expanded="false" data-icon="paletteBadge" data-icon-size="sm" data-icon-tone="info">Tema Padrão (Light)</button>
 				<div class="theme-menu" id="themePickerMenu" role="menu">
 					<div class="theme-option" data-style="padrao" role="presentation">
 						<span>Tema Padrão</span>
 						<div class="theme-modes">
-							<button type="button" data-mode="light">Light</button>
-							<button type="button" data-mode="dark">Dark</button>
+							<button type="button" data-mode="light" data-icon="sunBadge" data-icon-size="xs" data-icon-tone="warning">Light</button>
+							<button type="button" data-mode="dark" data-icon="moonBadge" data-icon-size="xs" data-icon-tone="primary">Dark</button>
 						</div>
 					</div>
 					<div class="theme-option" data-style="oceano" role="presentation">
 						<span>Tema Oceano</span>
 						<div class="theme-modes">
-							<button type="button" data-mode="light">Light</button>
-							<button type="button" data-mode="dark">Dark</button>
+							<button type="button" data-mode="light" data-icon="sunBadge" data-icon-size="xs" data-icon-tone="warning">Light</button>
+							<button type="button" data-mode="dark" data-icon="moonBadge" data-icon-size="xs" data-icon-tone="primary">Dark</button>
 						</div>
 					</div>
 					<div class="theme-option" data-style="esmeralda" role="presentation">
 						<span>Tema Esmeralda</span>
 						<div class="theme-modes">
-							<button type="button" data-mode="light">Light</button>
-							<button type="button" data-mode="dark">Dark</button>
+							<button type="button" data-mode="light" data-icon="sunBadge" data-icon-size="xs" data-icon-tone="warning">Light</button>
+							<button type="button" data-mode="dark" data-icon="moonBadge" data-icon-size="xs" data-icon-tone="primary">Dark</button>
 						</div>
 					</div>
 					<div class="theme-option" data-style="solar" role="presentation">
 						<span>Tema Solar</span>
 						<div class="theme-modes">
-							<button type="button" data-mode="light">Light</button>
-							<button type="button" data-mode="dark">Dark</button>
+							<button type="button" data-mode="light" data-icon="sunBadge" data-icon-size="xs" data-icon-tone="warning">Light</button>
+							<button type="button" data-mode="dark" data-icon="moonBadge" data-icon-size="xs" data-icon-tone="primary">Dark</button>
 						</div>
 					</div>
 					<div class="theme-option" data-style="violeta" role="presentation">
 						<span>Tema Violeta</span>
 						<div class="theme-modes">
-							<button type="button" data-mode="light">Light</button>
-							<button type="button" data-mode="dark">Dark</button>
+							<button type="button" data-mode="light" data-icon="sunBadge" data-icon-size="xs" data-icon-tone="warning">Light</button>
+							<button type="button" data-mode="dark" data-icon="moonBadge" data-icon-size="xs" data-icon-tone="primary">Dark</button>
 						</div>
 					</div>
 					<div class="theme-option" data-style="grafite" role="presentation">
 						<span>Tema Grafite</span>
 						<div class="theme-modes">
-							<button type="button" data-mode="light">Light</button>
-							<button type="button" data-mode="dark">Dark</button>
+							<button type="button" data-mode="light" data-icon="sunBadge" data-icon-size="xs" data-icon-tone="warning">Light</button>
+							<button type="button" data-mode="dark" data-icon="moonBadge" data-icon-size="xs" data-icon-tone="primary">Dark</button>
 						</div>
 					</div>
 				</div>
@@ -89,7 +88,7 @@
 				<input id="rangeStart" type="date" />
 				<label for="rangeEnd">e</label>
 				<input id="rangeEnd" type="date" />
-				<button id="loadRange" type="button">Filtrar</button>
+				<button id="loadRange" type="button" data-icon="filterBadge" data-icon-size="sm" data-icon-tone="primary">Filtrar</button>
 			</span>
 		</div>
 	</header>
@@ -97,7 +96,7 @@
 		<!-- Seção do gráfico temporal (inicialmente oculta) -->
 		<section class="cards" id="temporal_section" style="display:none;">
 			<div class="card card-progress-3" style="grid-column: span 5;">
-				<h3>Desempenho temporal</h3>
+				<h3 data-icon="chartLineBadge" data-icon-tone="info">Desempenho temporal</h3>
 				<p class="muted">Linha: Paletes Agendados (SIRF) • Coluna: Paletes Produzidos (WMS)</p>
 				<div class="temporalRow" style="display:flex; gap:12px; align-items:stretch;">
 					<div style="flex:1 1 85%; min-width:0;">
@@ -109,7 +108,7 @@
 				</div>
 			</div>
 			<div class="card card-progress-3" style="grid-column: span 5;">
-				<h3>Desempenho temporal (C3)</h3>
+				<h3 data-icon="chartLineBadge" data-icon-tone="info">Desempenho temporal (C3)</h3>
 				<p class="muted">Linha: Qtd Descarga C3 • Coluna: Qtd Carregamento C3</p>
 				<div class="temporalRow" style="display:flex; gap:12px; align-items:stretch;">
 					<div style="flex:1 1 85%; min-width:0;">
@@ -123,33 +122,33 @@
 		</section>
 		<section class="cards" id="cards">
 			<div class="card">
-				<h3>Paletes Agendados SIRF</h3>
+				<h3 data-icon="calendarBadge" data-icon-tone="info">Paletes Agendados SIRF</h3>
 				<p class="muted">Quantidade de paletes agendados no SIRF</p>
 				<div class="value" id="v_agendados">0</div>
 			</div>
 			<div class="card">
-				<h3>Qtd Paletes Produzidos WMS</h3>
+				<h3 data-icon="factoryBadge" data-icon-tone="success">Qtd Paletes Produzidos WMS</h3>
 				<p class="muted">Quantidade de paletes feito no dia WMS</p>
 				<div class="value" id="v_produzidos">0</div>
 			</div>
 			<div class="card">
-				<h3>Total de fichas SIRF</h3>
+				<h3 data-icon="clipboardBadge" data-icon-tone="info">Total de fichas SIRF</h3>
 				<p class="muted">Quantidade total de fichas no dia SIRF</p>
 				<div class="value" id="v_total_fichas">0</div>
 			</div>
 			<div class="card">
-				<h3>Fichas finalizadas</h3>
+				<h3 data-icon="checkBadge" data-icon-tone="success">Fichas finalizadas</h3>
 				<p class="muted">Quantidade de fichas finalizadas no dia</p>
 				<div class="value" id="v_finalizadas">0</div>
 			</div>
 			<div class="card">
-				<h3>Paletes Pendentes</h3>
+				<h3 data-icon="warningBadge" data-icon-tone="warning">Paletes Pendentes</h3>
 				<p class="muted">Peletes pendentes (Sobra)</p>
 				<div class="value" id="v_paletes_pend">0</div>
 			</div>
 			<!-- Card de Progresso do dia (ocupa 2 colunas abaixo dos dois primeiros cards) -->
 			<div class="card card-progress">
-				<h3>Progresso paletes produzidos</h3>
+				<h3 data-icon="progressBadge" data-icon-tone="info">Progresso paletes produzidos</h3>
 				<p class="muted">Total = Paletes Agendados; Feito = Qtd Paletes Produzidos</p>
 				<div class="progressRow">
 					<span class="label">Feito</span>
@@ -167,7 +166,7 @@
 
 			<!-- Card de Progresso das Fichas (ocupa 2 colunas) -->
 			<div class="card card-progress card-progress-3">
-				<h3>Progresso ficha conferidas</h3>
+				<h3 data-icon="progressChecklistBadge" data-icon-tone="success">Progresso ficha conferidas</h3>
 				<p class="muted">Total = Total de fichas; Finalizadas = Fichas finalizadas; Extra = Paletes Pendentes</p>
 				<div class="progressRow">
 					<span class="label">Finalizadas</span>
@@ -178,7 +177,7 @@
 
 			<div class="cards-split-row">
 				<div class="card card-progress-3">
-					<h3>Veículos Granel x Paletizado</h3>
+					<h3 data-icon="truckBadge" data-icon-tone="info">Veículos Granel x Paletizado</h3>
 					<p class="muted">Comparativo diário dos chamados (valores absolutos)</p>
 					<div class="dualRow">
 						<span class="label">Veículo Granel</span>
@@ -193,7 +192,7 @@
 				</div>
 
 				<div class="card card-progress-3 card-dual card-donut">
-					<h3>Distribuição Granel x Paletizado</h3>
+					<h3 data-icon="donutBadge" data-icon-tone="info">Distribuição Granel x Paletizado</h3>
 					<p class="muted">Percentual e totais acumulados do dia</p>
 					<div class="donutRow">
 						<div class="donut" id="donut_granel" aria-label="Donut Veículo Granel x Veículo Paletizado">
@@ -206,15 +205,15 @@
 							<div><span class="dot b"></span>Paletizado: <span id="donut_granel_pct_b">0%</span></div>
 						</div>
 						<div class="chipRow">
-							<div class="chip">
+							<div class="chip" data-icon="stackBadge" data-icon-tone="info" data-icon-size="sm">
 								<span>Total paletes</span>
 								<strong id="chip_granel_total">0</strong>
 							</div>
-							<div class="chip">
+							<div class="chip" data-icon="deltaBadge" data-icon-tone="warning" data-icon-size="sm">
 								<span>Diferença Absoluta</span>
 								<strong id="chip_granel_diff">0</strong>
 							</div>
-							<div class="chip">
+							<div class="chip" data-icon="leaderBadge" data-icon-tone="success" data-icon-size="sm">
 								<span>Liderança</span>
 								<strong id="chip_granel_leader">—</strong>
 							</div>
@@ -226,14 +225,14 @@
 		</section>
 		<section class="lists">
 			<div class="list">
-				<h3>Veículos pendentes (SOBRAS)</h3>
+				<h3 data-icon="pendingBadge" data-icon-tone="warning">Veículos pendentes (SOBRAS)</h3>
 				<p class="muted">Quantidade de Veículos pendentes e sua porcentagem</p>
 				<div class="value" id="v_pend_qtd">0</div>
 				<ul id="list_pend"></ul>
 				<div class="sumLine" id="sum_pend_qtd">Total de SOBRAS: 0</div>
 			</div>
 			<div class="list">
-				<h3>Veículos Antecipados</h3>
+				<h3 data-icon="forwardBadge" data-icon-tone="success">Veículos Antecipados</h3>
 				<p class="muted">Fichas antecipadas e seus veículos e sua porcentagem</p>
 				<div class="value" id="v_antec_qtd">0</div>
 				<ul id="list_antec"></ul>
@@ -241,7 +240,7 @@
 			</div>
 			<!-- Comparativo imediatamente abaixo de Veículos pendentes x Fichas antecipadas -->
 			<div class="list list-dual">
-				<h3>Comparativo do dia (Veículos pendentes x Fichas antecipadas)</h3>
+				<h3 data-icon="compareBadge" data-icon-tone="primary">Comparativo do dia (Veículos pendentes x Fichas antecipadas)</h3>
 				<div class="dualBox">
 					<div class="dualLeft">
 						<div class="dualRow">
@@ -268,18 +267,18 @@
 			<!-- Header especial entre os grupos -->
 			<div style="grid-column:1/-1; margin:0px 0 0 0;">
 				<header class="top daily secondary">
-					<h1 id="pageTitleC3">Recebimento (C3) CAD UDI</h1>
+					<h1 id="pageTitleC3" data-icon="warehouseBadge" data-icon-size="lg" data-icon-tone="success">Recebimento (C3) CAD UDI</h1>
 				</header>
 			</div>
 			<div class="list">
-				<h3>Descargas (C3)</h3>
+					<h3 data-icon="downloadBadge" data-icon-tone="info">Descargas (C3)</h3>
 				<p class="muted">Quantidade de Descargas (C3) e os veículos e suas porcentagens no dia feito</p>
 				<div class="value" id="v_desc_qtd">0</div>
 				<ul id="list_descargas"></ul>
 				<div class="sumLine" id="sum_desc_qtd">Total de paletes Descarregado C3: 0</div>
 			</div>
 			<div class="list">
-				<h3>Carregamentos (C3)</h3>
+				<h3 data-icon="uploadBadge" data-icon-tone="success">Carregamentos (C3)</h3>
 				<p class="muted">Quantidade de carregamentos (C3) e os veículos e suas porcentagens no dia feito</p>
 				<div class="value" id="v_carr_qtd">0</div>
 				<ul id="list_carreg"></ul>
@@ -287,7 +286,7 @@
 			</div>
 			<!-- Comparativo imediatamente abaixo de Descargas x Carregamentos -->
 			<div class="list list-dual">
-				<h3>Comparativo do dia (Descargas x Carregamentos)</h3>
+				<h3 data-icon="compareBadge" data-icon-tone="primary">Comparativo do dia (Descargas x Carregamentos)</h3>
 				<div class="dualBox">
 					<div class="dualLeft">
 						<div class="dualRow">
@@ -312,7 +311,7 @@
 			</div>
 		</section>
 		<section class="obs">
-			<h3>Observação</h3>
+			<h3 data-icon="noteBadge" data-icon-tone="primary">Observação</h3>
 			<p class="muted">Que e a observação diária sobre a produção</p>
 			<div id="obs_editor" class="obsEditor" style="display:none">
 				<div id="obs_toolbar" class="rteToolbar">
