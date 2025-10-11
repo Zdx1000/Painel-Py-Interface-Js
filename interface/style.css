@@ -1444,6 +1444,34 @@ main{
 	margin-bottom:var(--space-sm);
 }
 
+#obs_list{display:flex;flex-direction:column;gap:var(--space-sm)}
+.obsTimeline{position:relative;display:flex;flex-direction:column;gap:var(--space-sm);padding-left:26px}
+.obsTimeline::before{content:"";position:absolute;left:12px;top:8px;bottom:12px;width:2px;background:color-mix(in srgb, var(--obs-border-color) 68%, transparent 32%);border-radius:999px}
+.obsCard{position:relative;display:flex;gap:var(--space-sm);align-items:flex-start;background:var(--obs-item-bg);border:var(--border-width) solid var(--obs-item-border);border-radius:var(--radius-lg);padding:var(--space-sm) var(--space-md);box-shadow:0 10px 18px color-mix(in srgb, var(--obs-shadow-color) 65%, transparent 35%)}
+.obsCard[data-variant="alt"]{background:color-mix(in srgb, var(--obs-item-bg) 70%, var(--panel) 30%);border-color:color-mix(in srgb, var(--obs-item-border) 65%, transparent 35%)}
+.obsCard::before{content:"";position:absolute;left:-22px;top:18px;width:14px;height:14px;border-radius:999px;background:var(--panel);border:3px solid color-mix(in srgb, var(--accent) 55%, #ffffff 45%);box-shadow:0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent 82%)}
+.obsCard-icon{flex:0 0 auto;width:42px;height:42px;border-radius:16px;display:inline-flex;align-items:center;justify-content:center;background:color-mix(in srgb, var(--accent) 24%, var(--panel) 76%);box-shadow:0 12px 24px color-mix(in srgb, var(--accent) 32%, var(--obs-shadow-color) 68%)}
+.obsCard-icon svg{width:70%;height:70%}
+.obsCard-body{display:flex;flex-direction:column;gap:var(--space-xs);flex:1 1 auto}
+.obsCard-tag{font-size:var(--font-size-xxs);font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:color-mix(in srgb, var(--muted) 65%, var(--accent) 35%)}
+.obsCard-title{margin:0;font-size:var(--font-size-md);font-weight:var(--font-weight-semibold);color:var(--color-primary-700)}
+.obsCard-text{margin:0;font-size:var(--font-size-sm);line-height:1.55;color:var(--text);white-space:pre-line}
+.obsCard-list{margin:var(--space-xxs) 0 0 var(--space-sm);padding:0;list-style:disc;color:var(--text);display:flex;flex-direction:column;gap:var(--space-xxs)}
+.obsCard-list li{font-size:var(--font-size-sm);line-height:1.5}
+.obs-empty{display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:color-mix(in srgb, var(--obs-item-bg) 65%, var(--panel) 35%);border-radius:var(--radius-lg);border:var(--border-width) dashed color-mix(in srgb, var(--obs-border-color) 70%, transparent 30%)}
+.obs-empty-icon{flex:0 0 auto;width:54px;height:54px;border-radius:20px;display:inline-flex;align-items:center;justify-content:center;background:color-mix(in srgb, var(--accent) 22%, var(--panel) 78%);box-shadow:0 10px 20px color-mix(in srgb, var(--accent) 38%, var(--obs-shadow-color) 62%)}
+.obs-empty-icon svg{width:68%;height:68%}
+.obs-empty-body strong{display:block;font-size:var(--font-size-sm);color:var(--color-primary-700)}
+.obs-empty-body p{margin:var(--space-xxs) 0 0 0;font-size:var(--font-size-xs);color:var(--muted);max-width:360px}
+.obsRich{background:var(--obs-editor-bg);border:var(--border-width) solid var(--obs-editor-border);border-radius:var(--radius-lg);padding:var(--space-md);display:flex;flex-direction:column;gap:var(--space-xs);box-shadow:0 12px 24px color-mix(in srgb, var(--obs-shadow-color) 65%, transparent 35%)}
+.obsRich h1,.obsRich h2,.obsRich h3,.obsRich h4{margin:0 0 var(--space-xxs) 0;color:var(--color-primary-700)}
+.obsRich p{margin:0 0 var(--space-xs) 0;line-height:1.6;color:var(--text)}
+.obsRich ul,.obsRich ol{margin:0 0 var(--space-xs) var(--space-md);display:flex;flex-direction:column;gap:var(--space-xxs)}
+.obsRich blockquote{margin:0 0 var(--space-xs) 0;padding-left:var(--space-md);border-left:3px solid color-mix(in srgb, var(--obs-border-color) 75%, transparent 25%);color:color-mix(in srgb, var(--muted) 65%, var(--text) 35%);font-style:italic}
+.obsRich > :last-child{margin-bottom:0}
+.obsRich a{color:var(--accent);font-weight:600;text-decoration:underline;text-decoration-color:color-mix(in srgb, var(--accent) 60%, transparent 40%)}
+.obsRich hr{border:none;height:1px;background:color-mix(in srgb, var(--obs-border-color) 70%, transparent 30%)}
+
 /* Editor de Observação (visual) */
 .obsEditor{
 	margin-bottom:var(--space-md);
@@ -1479,6 +1507,8 @@ main{
 	gap:var(--space-xxs);
 }
 .rteToolbar .sep{width:1px;height:20px;background:var(--obs-toolbar-separator);margin:0 var(--space-xxs)}
+.rteToolbar button sup,
+.rteToolbar button sub{font-size:0.7em}
 .rteArea{
 	width:100%;
 	min-height:160px;

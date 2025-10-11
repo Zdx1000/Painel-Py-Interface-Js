@@ -318,11 +318,15 @@
 					<button type="button" data-cmd="bold"><strong>N</strong></button>
 					<button type="button" data-cmd="italic"><em>I</em></button>
 					<button type="button" data-cmd="underline"><u>S</u></button>
+					<button type="button" data-cmd="strikeThrough"><span style="text-decoration:line-through;">T</span></button>
 					<span class="sep"></span>
 					<button type="button" data-cmd="formatBlock" data-val="H3">Título</button>
+					<button type="button" data-cmd="formatBlock" data-val="H4">Subtítulo</button>
 					<button type="button" data-cmd="formatBlock" data-val="P">Parágrafo</button>
 					<button type="button" data-cmd="insertUnorderedList">Lista •</button>
 					<button type="button" data-cmd="insertOrderedList">Lista 1.</button>
+					<button type="button" data-cmd="indent" title="Aumentar recuo">→</button>
+					<button type="button" data-cmd="outdent" title="Diminuir recuo">←</button>
 					<span class="sep"></span>
 					<label class="small">Cor <input type="color" id="rte_color" /></label>
 					<label class="small">Fundo <input type="color" id="rte_bg" /></label>
@@ -344,11 +348,21 @@
 						<option value="24">24</option>
 					</select>
 					<span class="sep"></span>
-					<button type="button" data-cmd="justifyLeft">⟸</button>
-					<button type="button" data-cmd="justifyCenter">⟺</button>
-					<button type="button" data-cmd="justifyRight">⟹</button>
+					<button type="button" data-cmd="justifyLeft" title="Alinhar à esquerda">⟸</button>
+					<button type="button" data-cmd="justifyCenter" title="Centralizar">⟺</button>
+					<button type="button" data-cmd="justifyRight" title="Alinhar à direita">⟹</button>
+					<button type="button" data-cmd="justifyFull" title="Justificar">⟷</button>
 					<span class="sep"></span>
-					<button type="button" id="rte_clear">Limpar</button>
+					<button type="button" data-cmd="superscript" title="Sobrescrito">x<sup>2</sup></button>
+					<button type="button" data-cmd="subscript" title="Subscrito">x<sub>2</sub></button>
+					<button type="button" data-cmd="createLink" title="Criar link">Link</button>
+					<button type="button" data-cmd="insertHorizontalRule" title="Linha divisória">Linha</button>
+					<button type="button" data-cmd="removeFormat" title="Remover estilos">Sem estilo</button>
+					<span class="sep"></span>
+					<button type="button" data-cmd="undo" title="Desfazer">↺</button>
+					<button type="button" data-cmd="redo" title="Refazer">↻</button>
+					<span class="sep"></span>
+					<button type="button" id="rte_clear">Limpar tudo</button>
 				</div>
 				<div id="obs_rte" class="rteArea" contenteditable="true" spellcheck="false"></div>
 				<div class="row">

@@ -10,6 +10,7 @@ const THEME_LABELS = {
 	grafite: "Tema Grafite"
 };
 let MODE_TEMPORAL = false;
+let LAST_DAILY_DATA = null;
 
 const TOOLTIP_ICONS = {
 	calendar: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='#ffffff' stroke-width='1.8'><rect x='3' y='4.5' width='18' height='16.5' rx='2.5' ry='2.5' fill='#2563eb'/><path d='M3 9.5h18'/><path d='M8 3v3.5'/><path d='M16 3v3.5'/><circle cx='8.5' cy='13' r='1.2' fill='#ffffff'/><circle cx='12' cy='13' r='1.2' fill='#ffffff'/><circle cx='15.5' cy='13' r='1.2' fill='#ffffff'/></svg>",
@@ -567,20 +568,104 @@ function renderList(listId, items){
 	ul.appendChild(frag);
 }
 
+function buildObsEmptyMarkup(){
+	const icon = BADGE_ICONS.noteBadge || TOOLTIP_ICONS.calendar;
+	return `
+		<div class="obs-empty">
+			<span class="obs-empty-icon">${icon}</span>
+			<div class="obs-empty-body">
+				<strong>Sem observações registradas.</strong>
+				<p>Use o botão "Editar Observação" para adicionar comentários, destaques ou orientações para o time.</p>
+			</div>
+		</div>
+	`;
+}
+
+function renderObsVisual(html){
+	const wrap = document.getElementById("obs_list");
+	if(!wrap) return;
+	const safe = (html || "").trim();
+	if(!safe){
+		wrap.innerHTML = buildObsEmptyMarkup();
+		return;
+	}
+	if(/class\s*=\s*"[^"]*obsRich[^"]*"/.test(safe) || /class\s*=\s*'[^']*obsRich[^']*'/.test(safe)){
+		wrap.innerHTML = safe;
+	}else{
+		wrap.innerHTML = `<div class="obsRich">${safe}</div>`;
+	}
+}
+
 function renderObs(objs){
 	const wrap = document.getElementById("obs_list");
 	if(!wrap) return;
 	wrap.innerHTML = "";
-	if(!objs || objs.length === 0){
-		wrap.innerHTML = '<div class="muted">Sem observações do dia.</div>';
+	if(!objs || !objs.length){
+		wrap.innerHTML = buildObsEmptyMarkup();
 		return;
 	}
-	for(const o of objs){
-		const p = document.createElement("div");
-		p.className = "obsItem";
-		p.textContent = o;
-		wrap.appendChild(p);
-	}
+	const timeline = document.createElement("div");
+	timeline.className = "obsTimeline";
+	objs.forEach((rawValue, idx) => {
+		const raw = typeof rawValue === "string" ? rawValue : String(rawValue ?? "");
+		const entry = document.createElement("article");
+		entry.className = "obsCard";
+		entry.dataset.index = String(idx + 1);
+		entry.dataset.variant = (idx % 2 === 0) ? "base" : "alt";
+		const icon = document.createElement("span");
+		icon.className = "obsCard-icon";
+		icon.innerHTML = BADGE_ICONS.noteBadge || TOOLTIP_ICONS.calendar;
+		const body = document.createElement("div");
+		body.className = "obsCard-body";
+		const tag = document.createElement("span");
+		tag.className = "obsCard-tag";
+		tag.textContent = `Observação ${String(idx + 1).padStart(2, "0")}`;
+		body.appendChild(tag);
+		let heading = null;
+		let detail = raw.trim();
+		const colonMatch = detail.match(/^([^:]{3,80}):\s*(.+)$/);
+		if(colonMatch){
+			heading = colonMatch[1].trim();
+			detail = colonMatch[2].trim();
+			if(!detail){
+				detail = heading;
+				heading = null;
+			}
+		}
+		if(heading){
+			const title = document.createElement("h4");
+			title.className = "obsCard-title";
+			title.textContent = heading;
+			body.appendChild(title);
+		}
+		const normalized = detail.replace(/\r\n/g, "\n");
+		let segments = normalized.split(/\n+/).map(s => s.trim()).filter(Boolean);
+		if(segments.length <= 1){
+			const semi = normalized.split(/\s*;\s*/).map(s => s.trim()).filter(Boolean);
+			if(semi.length > 1){
+				segments = semi;
+			}
+		}
+		if(segments.length > 1){
+			const list = document.createElement("ul");
+			list.className = "obsCard-list";
+			segments.forEach(segment => {
+				const li = document.createElement("li");
+				li.textContent = segment;
+				list.appendChild(li);
+			});
+			body.appendChild(list);
+		}else{
+			const textEl = document.createElement("p");
+			textEl.className = "obsCard-text";
+			textEl.textContent = segments[0] || normalized || raw;
+			body.appendChild(textEl);
+		}
+		entry.appendChild(icon);
+		entry.appendChild(body);
+		timeline.appendChild(entry);
+	});
+	wrap.appendChild(timeline);
 }
 
 // Estado de observações editadas somente no visual (por data ISO yyyy-mm-dd)
@@ -604,6 +689,7 @@ async function carregarDia(){
 	}
 	try{
 		const data = await fetchDia(val);
+		LAST_DAILY_DATA = data;
 		const t = data.totals || {};
 		setText("v_agendados", t.paletes_agendados ?? 0);
 		setText("v_produzidos", t.paletes_produzidos ?? 0);
@@ -654,14 +740,10 @@ async function carregarDia(){
 
 		// Observações: prioriza edição visual se existir para a data
 		const visual = OBS_VISUAL.get(val);
-		if(typeof visual === "string"){ // render HTML salvo
-			const wrap = document.getElementById("obs_list");
-			if(wrap){
-				wrap.innerHTML = visual;
-			}
+		if(typeof visual === "string"){
+			renderObsVisual(visual);
 		}else{
-			const obsToShow = data.observacoes || [];
-			renderObs(obsToShow);
+			renderObs(data.observacoes || []);
 		}
 
 	// Progresso do dia (Paletes Produzidos / Agendados)
@@ -1499,8 +1581,26 @@ document.addEventListener("DOMContentLoaded", () => {
 			if(typeof visual === "string"){
 				rte.innerHTML = visual;
 			}else{
-				const items = Array.from(document.querySelectorAll('#obs_list .obsItem')).map(x => `<p>${x.textContent.trim()}</p>`);
-				rte.innerHTML = items.join("");
+				const cards = Array.from(document.querySelectorAll('#obs_list .obsCard'));
+				if(cards.length){
+					const blocks = cards.map(card => {
+						const title = card.querySelector('.obsCard-title')?.textContent.trim();
+						const listItems = Array.from(card.querySelectorAll('.obsCard-list li')).map(li => li.textContent.trim()).filter(Boolean);
+						const text = card.querySelector('.obsCard-text')?.textContent.trim();
+						const parts = [];
+						if(title){ parts.push(`<h3>${title}</h3>`); }
+						if(listItems.length){
+							parts.push('<ul>' + listItems.map(item => `<li>${item}</li>`).join('') + '</ul>');
+						}else if(text){
+							parts.push(`<p>${text}</p>`);
+						}
+						return parts.join("");
+					});
+					rte.innerHTML = blocks.join("");
+				}else{
+					const legacyItems = Array.from(document.querySelectorAll('#obs_list .obsItem')).map(x => `<p>${x.textContent.trim()}</p>`);
+					rte.innerHTML = legacyItems.join("");
+				}
 			}
 			editor.style.display = "block";
 			window.scrollTo({top: document.body.scrollHeight, behavior: "smooth"});
@@ -1511,10 +1611,18 @@ document.addEventListener("DOMContentLoaded", () => {
 	
 	save.addEventListener("click", () => {
 		const date = document.getElementById("datePick").value;
-		const html = rte.innerHTML;
-		OBS_VISUAL.set(date, html);
-		const wrap = document.getElementById("obs_list");
-		if(wrap){ wrap.innerHTML = html; }
+		const html = rte.innerHTML.trim();
+		const sanitized = html.replace(/<script.*?>.*?<\/script>/gi, "");
+		const textProbe = sanitized.replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ").trim();
+		const hasContent = textProbe.length > 0;
+		if(hasContent){
+			OBS_VISUAL.set(date, sanitized);
+			renderObsVisual(sanitized);
+		}else{
+			OBS_VISUAL.delete(date);
+			const fallback = (LAST_DAILY_DATA && LAST_DAILY_DATA.observacoes) || [];
+			renderObs(fallback);
+		}
 		editor.style.display = "none";
 	});
 
@@ -1529,10 +1637,43 @@ document.addEventListener("DOMContentLoaded", () => {
 		const cmd = btn.getAttribute('data-cmd');
 		const val = btn.getAttribute('data-val');
 		if(!cmd) return;
-		if(cmd === 'formatBlock'){
-			document.execCommand(cmd, false, val);
-		}else{
-			document.execCommand(cmd, false, null);
+		switch(cmd){
+			case 'formatBlock':
+				document.execCommand('formatBlock', false, val || 'P');
+				break;
+			case 'createLink':{
+				const current = window.getSelection()?.toString() || '';
+				const url = prompt('Informe o endereço (https://...)', current.startsWith('http') ? current : 'https://');
+				if(url){
+					document.execCommand('createLink', false, url.trim());
+				}
+				break;
+			}
+			case 'removeFormat':
+				document.execCommand('removeFormat', false, null);
+				document.execCommand('unlink', false, null);
+				break;
+			case 'insertHorizontalRule':
+			case 'strikeThrough':
+			case 'justifyFull':
+			case 'justifyLeft':
+			case 'justifyCenter':
+			case 'justifyRight':
+			case 'insertOrderedList':
+			case 'insertUnorderedList':
+			case 'indent':
+			case 'outdent':
+			case 'superscript':
+			case 'subscript':
+			case 'undo':
+			case 'redo':
+			case 'bold':
+			case 'italic':
+			case 'underline':
+				document.execCommand(cmd, false, null);
+				break;
+			default:
+				document.execCommand(cmd, false, val);
 		}
 		rte.focus();
 	});
