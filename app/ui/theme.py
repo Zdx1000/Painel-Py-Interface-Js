@@ -1,5 +1,19 @@
 from __future__ import annotations
 
+from typing import Iterable, List, Sequence, Tuple
+
+from PySide6.QtCore import QDynamicPropertyChangeEvent, QEvent, QObject
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import (
+  QComboBox,
+  QDoubleSpinBox,
+  QGraphicsDropShadowEffect,
+  QLineEdit,
+  QSpinBox,
+  QTextEdit,
+  QWidget,
+)
+
 # Paleta base clara com acento azul-escuro
 # - Fundo: cinza muito claro
 # - Superfícies: branco / azul neutro claro
@@ -27,18 +41,15 @@ QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox, QTextEdit {
 }
 QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus, QTextEdit:focus {
   border: 1px solid #1d4ed8;
-  box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.14);
 }
 QLineEdit[invalid="true"], QSpinBox[invalid="true"], QDoubleSpinBox[invalid="true"],
 QComboBox[invalid="true"], QTextEdit[invalid="true"] {
   border: 1px solid #f97316;
-  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.18);
   background-color: #fff7ed;
 }
 QLineEdit[success="true"], QSpinBox[success="true"], QDoubleSpinBox[success="true"],
 QComboBox[success="true"], QTextEdit[success="true"] {
   border: 1px solid #0ea5e9;
-  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.16);
   background-color: #f0f9ff;
 }
 QComboBox QAbstractItemView {
@@ -315,7 +326,6 @@ QTextEdit#obsEdit {
 }
 QTextEdit#obsEdit:focus {
   border: 1px solid #1d4ed8;
-  box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.12);
 }
 QTextEdit#obsEdit QScrollBar:vertical {
   background: transparent;
@@ -342,4 +352,129 @@ QLabel#toastLabel {
 APP_QSS = LIGHT_QSS
 
 
-__all__ = ["LIGHT_QSS", "APP_QSS"]
+_FocusColorKey = Tuple[str, str]
+
+
+def _make_color(rgb: str, alpha: float) -> QColor:
+  color = QColor(rgb)
+  color.setAlphaF(max(0.0, min(1.0, alpha)))
+  return color
+
+
+class _FocusShadowFilter(QObject):
+  """Ativa sombra via QGraphicsDropShadowEffect somente quando o widget está focado."""
+
+  def __init__(
+    self,
+    *,
+    blur_radius: float,
+    x_offset: float,
+    y_offset: float,
+    colors: Sequence[Tuple[_FocusColorKey, QColor]],
+    parent: QObject | None = None,
+  ) -> None:
+    super().__init__(parent)
+    self._blur_radius = blur_radius
+    self._x_off = x_offset
+    self._y_off = y_offset
+    self._color_map = dict(colors)
+
+  def _color_for(self, widget: QWidget) -> QColor:
+    if bool(widget.property("invalid")):
+      return self._color_map[("state", "invalid")]
+    if bool(widget.property("success")):
+      return self._color_map[("state", "success")]
+    return self._color_map[("state", "neutral")]
+
+  def _apply_shadow(self, widget: QWidget) -> None:
+    effect = widget.graphicsEffect()
+    if not isinstance(effect, QGraphicsDropShadowEffect):
+      effect = QGraphicsDropShadowEffect(widget)
+      widget.setGraphicsEffect(effect)
+    effect.setBlurRadius(self._blur_radius)
+    effect.setXOffset(self._x_off)
+    effect.setYOffset(self._y_off)
+    effect.setColor(self._color_for(widget))
+
+  def _remove_shadow(self, widget: QWidget) -> None:
+    widget.setGraphicsEffect(None)
+
+  def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+    if not isinstance(obj, QWidget):
+      return False
+
+    if event.type() == QEvent.FocusIn:
+      self._apply_shadow(obj)
+    elif event.type() == QEvent.FocusOut:
+      self._remove_shadow(obj)
+    elif event.type() == QEvent.DynamicPropertyChange:
+      dyn_event = event  # type: ignore[assignment]
+      if isinstance(dyn_event, QDynamicPropertyChangeEvent) and obj.hasFocus():
+        self._apply_shadow(obj)
+    return False
+
+
+def enable_focus_shadow(
+  widget: QWidget,
+  *,
+  neutral_color: str = "#1d4ed8",
+  success_color: str = "#0ea5e9",
+  invalid_color: str = "#f97316",
+  alpha: float = 0.35,
+  blur_radius: float = 28.0,
+  x_offset: float = 0.0,
+  y_offset: float = 6.0,
+) -> None:
+  """Instala sombra focada usando eventos para reproduzir e refinar o efeito do antigo box-shadow."""
+
+  colors = (
+    (("state", "neutral"), _make_color(neutral_color, alpha)),
+    (("state", "success"), _make_color(success_color, alpha)),
+    (("state", "invalid"), _make_color(invalid_color, alpha)),
+  )
+  flt = _FocusShadowFilter(
+    blur_radius=blur_radius,
+    x_offset=x_offset,
+    y_offset=y_offset,
+    colors=colors,
+    parent=widget,
+  )
+  widget.installEventFilter(flt)
+  store: List[_FocusShadowFilter]
+  store = getattr(widget, "_focus_shadow_filters", [])
+  store.append(flt)
+  setattr(widget, "_focus_shadow_filters", store)
+
+
+INPUT_WIDGETS: Tuple[type[QWidget], ...] = (QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox, QTextEdit)
+
+
+def enable_focus_shadow_for_children(
+  container: QWidget,
+  *,
+  widgets: Iterable[QWidget] | None = None,
+  include_types: Tuple[type[QWidget], ...] = INPUT_WIDGETS,
+  **shadow_kwargs,
+) -> None:
+  """Aplica sombras elegantes a todos os campos de entrada do container, opcionalmente com overrides."""
+
+  targets: Iterable[QWidget]
+  if widgets is not None:
+    targets = widgets
+  else:
+    found: List[QWidget] = []
+    for widget_type in include_types:
+      found.extend(container.findChildren(widget_type))
+    targets = found
+
+  for child in targets:
+    enable_focus_shadow(child, **shadow_kwargs)
+
+
+__all__ = [
+  "LIGHT_QSS",
+  "APP_QSS",
+  "enable_focus_shadow",
+  "enable_focus_shadow_for_children",
+  "INPUT_WIDGETS",
+]
