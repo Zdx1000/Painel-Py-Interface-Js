@@ -5,7 +5,6 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from .theme import APP_QSS
 
 
-
 class VeiculosDialog(QtWidgets.QDialog):
     def __init__(
         self,

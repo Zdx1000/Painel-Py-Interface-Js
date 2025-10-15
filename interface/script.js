@@ -855,6 +855,7 @@ async function carregarDia(){
 			if(lbVP) lbVP.textContent = String(vpB);
 		}
 
+		
 		// Comparativo Veículo Granel x Veículo Paletizado
 		const vgA = Math.max(0, parseInt(t.chamado_granel || 0, 10));
 		const vgB = Math.max(0, parseInt(t.paletizada || 0, 10));

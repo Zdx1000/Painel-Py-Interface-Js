@@ -133,6 +133,7 @@
 	--title-extra-bg:rgba(74,85,104,0.14);
 }
 
+
 :root[data-style="grafite"][data-mode="dark"]{
 	--color-primary-700:#cbd5f5;
 	--color-primary-500:#94a3c4;

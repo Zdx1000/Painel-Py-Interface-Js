@@ -133,6 +133,7 @@
 	--html-bg-solid:#e6f1fb;
 }
 
+
 :root[data-style="oceano"][data-mode="dark"]{
 	--color-primary-700:#63b4ff;
 	--color-primary-500:#3fa0f0;

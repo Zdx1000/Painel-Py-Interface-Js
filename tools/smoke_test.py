@@ -9,6 +9,7 @@ if str(ROOT) not in sys.path:
 from app.db.database import init_db, get_session
 from app.db.repository import MetricaRepository
 
+
 if __name__ == "__main__":
     init_db()
     s = next(get_session())

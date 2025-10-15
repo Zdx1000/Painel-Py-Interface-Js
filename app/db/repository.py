@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from .models import Metrica, VeiculoPendente, VeiculoDescargaC3, VeiculoAntecipado, VeiculoCarregamentoC3
 
 
-
 class MetricaRepository:
     def __init__(self, session: Session) -> None:
         self.session = session

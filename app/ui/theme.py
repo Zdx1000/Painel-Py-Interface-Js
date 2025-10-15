@@ -315,6 +315,7 @@ QDialogButtonBox QPushButton {
   min-width: 100px;
 }
 
+
 /* QTextEdit observação */
 QTextEdit#obsEdit {
   background-color: #ffffff;

@@ -11,7 +11,6 @@ class Base(DeclarativeBase):
 
 
 
-
 class Metrica(Base):
     __tablename__ = "metricas"
 

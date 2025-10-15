@@ -283,6 +283,7 @@ class ApiHandler(BaseHTTPRequestHandler):
             finally:
                 session.close()
 
+
         if path.startswith("/api/metricas/") and path.endswith("/descargas-c3"):
             parts = path.split("/")
             try:

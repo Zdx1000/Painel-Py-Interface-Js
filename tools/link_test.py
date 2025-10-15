@@ -13,6 +13,7 @@ session = next(get_session())
 met_repo = MetricaRepository(session)
 veh_repo = VeiculoPendenteRepository(session)
 
+
 m = met_repo.add(
     paletes_agendados=10,
     paletes_produzidos=8,

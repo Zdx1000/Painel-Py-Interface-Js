@@ -487,7 +487,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._apply_card_shadow(command_bar, blur=20, y_offset=6, alpha=24)
         self._command_bar = command_bar
 
-        # Layout
+        # Layou
         central = QtWidgets.QWidget()
         lay = QtWidgets.QVBoxLayout(central)
         lay.setContentsMargins(16, 16, 16, 16)
