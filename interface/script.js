@@ -672,6 +672,82 @@ function renderObs(objs){
 // Armazenaremos HTML (string) para preservar formatação rich-text
 const OBS_VISUAL = new Map();
 
+function initDetailOverlay(){
+	const overlay = document.getElementById("detailOverlay");
+	const container = document.getElementById("detailOverlayContent");
+	const titleEl = document.getElementById("detailOverlayTitle");
+	const typeEl = document.getElementById("detailOverlayType");
+	const closeBtn = document.getElementById("detailOverlayClose");
+	if(!overlay || !container || !titleEl || !typeEl || !closeBtn){
+		return null;
+	}
+
+	let lastFocus = null;
+
+	const close = () => {
+		if(!overlay.classList.contains("is-open")) return;
+		overlay.classList.remove("is-open");
+		overlay.setAttribute("aria-hidden", "true");
+		overlay.setAttribute("hidden", "");
+		container.innerHTML = "";
+		document.body.classList.remove("has-overlay");
+		if(lastFocus && typeof lastFocus.focus === "function"){
+			lastFocus.focus();
+		}
+		lastFocus = null;
+	};
+
+	const open = source => {
+		if(!source) return;
+		const clone = source.cloneNode(true);
+		clone.classList.add("detail-preview");
+		clone.querySelectorAll("[id]").forEach(node => node.removeAttribute("id"));
+		clone.querySelectorAll("button").forEach(btn => {
+			btn.setAttribute("disabled", "disabled");
+		});
+		container.innerHTML = "";
+		container.appendChild(clone);
+		const kind = source.classList.contains("list") ? "Lista" : "Card";
+		const headingEl = source.querySelector("h3");
+		const heading = headingEl ? headingEl.textContent.trim() : "Detalhes";
+		typeEl.textContent = kind;
+		titleEl.textContent = heading;
+		lastFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		overlay.classList.add("is-open");
+		overlay.removeAttribute("hidden");
+		overlay.setAttribute("aria-hidden", "false");
+		document.body.classList.add("has-overlay");
+		closeBtn.focus({ preventScroll: true });
+	};
+
+	const handleDblClick = evt => {
+		if(overlay.classList.contains("is-open")) return;
+		const target = evt.target.closest(".card, .list");
+		if(!target || !document.body.contains(target)) return;
+		if(target.closest(".detail-overlay")) return;
+		evt.preventDefault();
+		open(target);
+	};
+
+	const handleKeydown = evt => {
+		if(evt.key === "Escape" && overlay.classList.contains("is-open")){
+			evt.preventDefault();
+			close();
+		}
+	};
+
+	overlay.addEventListener("click", evt => {
+		if(evt.target === overlay){
+			close();
+		}
+	});
+	closeBtn.addEventListener("click", close);
+	document.addEventListener("keydown", handleKeydown);
+	document.addEventListener("dblclick", handleDblClick);
+
+	return { open, close };
+}
+
 async function carregarDia(){
 	const input = document.getElementById("datePick");
 	const val = input.value;
@@ -939,6 +1015,7 @@ document.addEventListener("DOMContentLoaded", () => {
 	const input = document.getElementById("datePick");
 	input.value = today;
 	setPageTitle("Recebimento CAD UDI", "", `(${dd}/${mm}/${yyyy})`);
+	initDetailOverlay();
 
 	// Inicializa tema salvo
 	const root = document.documentElement;

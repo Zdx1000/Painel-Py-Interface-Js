@@ -1206,6 +1206,102 @@ main{
 	background:color-mix(in srgb, #f59e0b 90%, #facc15 10%);
 	box-shadow:0 10px 18px rgba(250,204,21,0.38);
 }
+body.has-overlay{overflow:hidden}
+.detail-overlay{
+	position:fixed;
+	inset:0;
+	display:none;
+	align-items:center;
+	justify-content:center;
+	padding:32px 20px;
+	background:color-mix(in srgb, var(--color-overlay, rgba(4,11,24,0.72)) 85%, transparent 15%);
+	backdrop-filter:blur(18px);
+	z-index:999;
+}
+.detail-overlay.is-open{display:flex}
+.detail-surface{
+	width:min(920px, 95vw);
+	max-height:min(85vh, 720px);
+	background:linear-gradient(160deg, var(--card-bg-top) 0%, color-mix(in srgb, var(--card-bg-bottom) 82%, rgba(255,255,255,0.08) 18%) 100%);
+	border:var(--border-width) solid color-mix(in srgb, var(--card-border-color) 72%, rgba(255,255,255,0.12) 28%);
+	border-radius:var(--radius-lg);
+	box-shadow:0 32px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+	padding:24px;
+	display:flex;
+	flex-direction:column;
+	gap:var(--space-md);
+	position:relative;
+	overflow:hidden;
+}
+.detail-header{
+	display:flex;
+	align-items:flex-start;
+	justify-content:space-between;
+	gap:var(--space-md);
+	position:sticky;
+	top:0;
+	background:linear-gradient(180deg, color-mix(in srgb, var(--card-bg-top) 94%, rgba(255,255,255,0.08) 6%) 0%, transparent 100%);
+	padding-bottom:var(--space-sm);
+	z-index:2;
+	border-bottom:var(--border-width) solid color-mix(in srgb, var(--card-border-color) 60%, transparent 40%);
+}
+.detail-titles{display:flex;flex-direction:column;gap:var(--space-xxs)}
+.detail-kind{
+	font-size:var(--font-size-xs);
+	text-transform:uppercase;
+	letter-spacing:0.6px;
+	color:color-mix(in srgb, var(--muted) 72%, rgba(255,255,255,0.45) 28%);
+}
+.detail-title{
+	margin:0;
+	font-size:var(--font-size-xl);
+	font-weight:var(--font-weight-semibold);
+	color:var(--text);
+	text-shadow:0 2px 12px rgba(0,0,0,0.35);
+}
+.detail-close{
+	background:linear-gradient(135deg, rgba(96,165,250,0.22) 0%, rgba(37,99,235,0.18) 100%);
+	border:var(--border-width) solid color-mix(in srgb, var(--card-border-color) 70%, rgba(255,255,255,0.16) 30%);
+	color:var(--text);
+	border-radius:var(--radius-sm);
+	width:36px;
+	height:36px;
+	font-size:22px;
+	line-height:1;
+	cursor:pointer;
+	box-shadow:0 12px 24px rgba(0,0,0,0.35);
+	transition:transform var(--transition-base), box-shadow var(--transition-base);
+}
+.detail-close:hover{transform:translateY(-2px);box-shadow:0 16px 28px rgba(0,0,0,0.42)}
+.detail-close:active{transform:translateY(0);box-shadow:0 10px 18px rgba(0,0,0,0.3)}
+.detail-content{
+	flex:1 1 auto;
+	overflow:auto;
+	padding-right:4px;
+	display:flex;
+	flex-direction:column;
+	gap:var(--space-md);
+}
+.detail-content .card,
+.detail-content .list{
+	width:100%;
+	margin:0;
+	transform:none !important;
+	box-shadow:0 12px 28px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.05);
+	border:var(--border-width) solid color-mix(in srgb, var(--card-border-color) 62%, rgba(255,255,255,0.12) 38%);
+}
+.detail-content .card::before,
+.detail-content .list::before{opacity:0.85}
+.detail-content .card:hover,
+.detail-content .list:hover{box-shadow:0 12px 28px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.05)}
+.detail-content .dualBox{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.detail-content .sumLine{align-self:flex-start;text-align:left}
+.detail-overlay .dualRight{align-items:center}
+.detail-overlay .card,.detail-overlay .list{animation:detailPop 0.28s ease}
+@keyframes detailPop{
+	0%{transform:scale(0.96);opacity:0}
+	100%{transform:scale(1);opacity:1}
+}
 /* Comparativos e gráficos aprimorados */
 .dualRow{display:flex;justify-content:space-between;align-items:center;margin-top:8px;margin-bottom:10px}
 .dualWrap{
